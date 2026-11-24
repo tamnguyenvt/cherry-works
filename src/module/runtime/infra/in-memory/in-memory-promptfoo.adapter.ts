@@ -1,4 +1,4 @@
-import type { InMemoryFileReaders } from "../../../shared/module.js";
+import type { InMemoryFileReaders } from "../../../shared/infra.js";
 import type {
   ForRunningPromptfoo,
   PromptfooLog,

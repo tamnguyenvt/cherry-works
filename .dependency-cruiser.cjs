@@ -39,7 +39,8 @@ module.exports = {
       severity: "error",
       comment:
         "Each module says in its module.ts what the code outside it may " +
-        "reach, and another module reaches it there and nowhere else: its " +
+        "reach of its engine, and in its infra.ts what of its adapters, and " +
+        "another module reaches it there and nowhere else: its " +
         "inside can be rearranged without anything outside noticing. A DTO " +
         "file, and the kernel's DTO entry, are governed by dtos-are-zod-only " +
         "alone: they reach the entry, which no other file may.",
@@ -47,17 +48,17 @@ module.exports = {
         path: "^src/module/([^/]+)/",
         pathNot: "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$|^src/module/shared/app/port/in/index\\.ts$",
       },
-      to: { path: "^src/module/(?!$1/)[^/]+/", pathNot: "^src/module/[^/]+/module\\.ts$" },
+      to: { path: "^src/module/(?!$1/)[^/]+/", pathNot: "^src/module/[^/]+/(module|infra)\\.ts$" },
     },
     {
       name: "driver-and-composition-enter-through-module-ts",
       severity: "error",
       comment:
         "A driver, the composition root (src/module/composition.ts) and the entry points (main.ts, src/index.ts) reach a module " +
-        "through its module.ts alone, whatever they take of it — an " +
-        "application, a port, a DTO, an adapter.",
+        "through its module.ts alone — an application, a port, a DTO — " +
+        "and its adapters through its infra.ts alone.",
       from: { pathNot: "^src/module/[^/]+/" },
-      to: { path: "^src/module/", pathNot: "^src/module/[^/]+/module\\.ts$|^src/module/composition\\.ts$" },
+      to: { path: "^src/module/", pathNot: "^src/module/[^/]+/(module|infra)\\.ts$|^src/module/composition\\.ts$" },
     },
     {
       name: "driven-answers-only-its-port",
@@ -66,9 +67,13 @@ module.exports = {
         "A driven adapter, in its module's infrastructure, implements a driven " +
         "port of its module or of the kernel, and that port is all it knows of " +
         "them. Whatever it needs from inside — an error to raise, a type to " +
-        "return — is exported by the port it answers.",
+        "return — is exported by the port it answers; the kernel's helpers " +
+        "for adapters, by the kernel's infra.ts.",
       from: { path: "^src/module/([^/]+)/infra/" },
-      to: { path: "^src/module", pathNot: "^src/module/$1/(app/port/out/|infra/)|^src/module/shared/module\\.ts$" },
+      to: {
+        path: "^src/module",
+        pathNot: "^src/module/$1/(app/port/out/|infra/)|^src/module/shared/(module|infra)\\.ts$",
+      },
     },
     {
       name: "application-holds-no-adapter",
@@ -88,7 +93,7 @@ module.exports = {
         "A DTO file imports the other DTO and schema files, the kernel's DTO " +
         "entry (src/module/shared/app/port/in/index.ts) and the kernel's " +
         "validator lib, and nothing else — never the kernel's module.ts, which " +
-        "reaches its adapters and node:*. The entry reaches those alone.",
+        "reaches its applications. The entry reaches those alone.",
       from: {
         path: "^src/module/[^/]+/app/port/in/[^/]+\\.(dto|schema)\\.ts$|^src/module/shared/app/port/in/index\\.ts$",
       },
@@ -130,7 +135,7 @@ module.exports = {
       severity: "error",
       comment:
         "The page reads what the modules answer as types, and bundles nothing " +
-        "of them: a module.ts reaches every application and adapter of its module.",
+        "of them: a module.ts reaches every application of its module.",
       from: { path: "^src/presentation/portal/page/" },
       to: { path: "^src/module/", dependencyTypesNot: ["type-only"] },
     },

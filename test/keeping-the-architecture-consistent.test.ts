@@ -372,7 +372,7 @@ test("no use case, service or model of a module, nor an agent's projection, read
   assert.deepEqual(layoutReadingPaths, []);
 });
 
-test("every file of src is named <kebab-subject>.<role>, but a model, a value object, an adapter's own model, helper.ts, index.ts, module.ts, the composition root and AGENTS.md (CORE Story 42 scenario 1, CORE Story 44, CORE Story 45)", () => {
+test("every file of src is named <kebab-subject>.<role>, but a model, a value object, an adapter's own model, helper.ts, index.ts, module.ts, infra.ts, the composition root and AGENTS.md (CORE Story 42 scenario 1, CORE Story 44, CORE Story 45)", () => {
   const sourceFolderUrl = new URL("src/", repositoryUrl);
   const misnamedPaths = readdirSync(sourceFolderUrl, { recursive: true, encoding: "utf8" })
     .filter(
@@ -393,7 +393,7 @@ test("every file of src is named <kebab-subject>.<role>, but a model, a value ob
         return false;
       return (
         sourcePath !== "module/composition.ts" &&
-        !["helper.ts", "index.ts", "module.ts", "AGENTS.md"].includes(fileName) &&
+        !["helper.ts", "index.ts", "module.ts", "infra.ts", "AGENTS.md"].includes(fileName) &&
         !/^[a-z0-9]+(-[a-z0-9]+)*\.[a-z]+(-[a-z]+)*\.(ts|mjs|d\.mts)$/.test(fileName)
       );
     });
@@ -429,6 +429,7 @@ const fixedFileNames = [
   "helper.ts",
   "index.ts",
   "module.ts",
+  "infra.ts",
   "constants.ts",
   "schema.ts",
   "composition.ts",

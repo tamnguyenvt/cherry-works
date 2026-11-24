@@ -1,8 +1,8 @@
 /**
  * MODULE — the kernel every module shares.
  *
- * Everything it lets the code outside it reach, and the only file the code
- * outside it imports (`.dependency-cruiser.cjs`).
+ * Everything of its engine it lets the code outside it reach; its adapters
+ * are reached through `infra.ts` (`.dependency-cruiser.cjs`).
  */
 export { ApplicationService, INTERNAL_FAULT_DTO } from "./app/application-service.base.js";
 export { dto, groupByType, StringsSchema } from "./app/port/in/dto.schema.js";
@@ -86,17 +86,3 @@ export { Faults } from "./domain/models/fault/faults.js";
 export { FaultsByFile } from "./domain/models/fault/faults-by-file.js";
 export { RefusedByOtherModuleFault } from "./domain/models/shared.fault.js";
 export { FlagSchema, GoodArraySchema, GoodLineSchema } from "./domain/schema.js";
-export { ConsoleReporter } from "./infra/console-reporter.adapter.js";
-export { FileOutput } from "./infra/file-output.adapter.js";
-export { FileReaders } from "./infra/file-readers.adapter.js";
-export {
-  decodeContents,
-  encodeContents,
-  resolveCheckoutPath,
-  resolveFileUrl,
-  resolveRepoPath,
-} from "./infra/helper.js";
-export type { InMemoryFileReaders } from "./infra/in-memory/in-memory-file-readers.adapter.js";
-export { McpClients } from "./infra/mcp-clients.adapter.js";
-export { StderrReporter } from "./infra/stderr-reporter.adapter.js";
-export { SystemClock } from "./infra/system-clock.adapter.js";

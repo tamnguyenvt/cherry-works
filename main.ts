@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
 import packageJson from "./package.json" with { type: "json" };
 import { composeApplications } from "./src/module/composition.js";
-import { StderrReporter } from "./src/module/shared/module.js";
+import { StderrReporter } from "./src/module/shared/infra.js";
 import { Commander } from "./src/presentation/cli/cli.commander.js";
 
 /**

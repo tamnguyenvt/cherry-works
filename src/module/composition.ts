@@ -1,10 +1,17 @@
 import {
-  AuthoringCharter,
-  BuildingCharter,
-  buildCharterService,
   ClaudeProjection,
   CodexProjection,
   FileCharterRepository,
+  GitSources,
+  KeychainCredentialsRepository,
+  LocalRepoManipulator,
+  OAuth,
+  Tiktoken,
+} from "#module/charter/infra.js";
+import {
+  AuthoringCharter,
+  BuildingCharter,
+  buildCharterService,
   type ForAuthoringCharter,
   type ForAuthorizingOAuthClients,
   type ForBuildingCharter,
@@ -14,45 +21,38 @@ import {
   type ForManagingLocalAgentOutput,
   type ForManagingLocalOutput,
   type ForStoringCredentials,
-  GitSources,
-  KeychainCredentialsRepository,
-  LocalRepoManipulator,
   loadCharterService,
   loadMcpOriginsService,
-  OAuth,
-  Tiktoken,
 } from "#module/charter/module.js";
 import {
   ClaudeCli,
   CodexCli,
   FileSessionAnalysisRepository,
+  GitWorktrees,
+  Promptfoo,
+  Shell,
+} from "#module/runtime/infra.js";
+import {
   type ForCheckingAgentCli,
   type ForKeepingWorktrees,
   type ForLoadingSessionAnalysis,
   type ForRunningCharter,
   type ForRunningPromptfoo,
   type ForRunningShellCommands,
-  GitWorktrees,
-  Promptfoo,
   RunningCharter,
-  Shell,
 } from "#module/runtime/module.js";
+import { ConsoleReporter, FileOutput, FileReaders, McpClients, SystemClock } from "#module/shared/infra.js";
 import {
-  ConsoleReporter,
-  FileOutput,
-  FileReaders,
   FolderAddress,
   type ForCallingMcpServers,
   type ForReadingFiles,
   type ForReportingProgress,
   type ForTellingTime,
   type ForWritingFiles,
-  McpClients,
   MissingFolderReaderFault,
-  SystemClock,
 } from "#module/shared/module.js";
+import { FileWorkspaceSettingsRepository } from "#module/workspace/infra.js";
 import {
-  FileWorkspaceSettingsRepository,
   type ForManagingWorkspace,
   type ForStoringWorkspaceSettings,
   ManagingWorkspace,

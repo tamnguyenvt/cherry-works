@@ -14,6 +14,2459 @@ declare class AgentProvider {
     toJSON(): AgentProviderName;
 }
 
+/** One file of a primitive's folder beside its `index.md`: the path it has in
+ *  that folder, and the bytes it holds, never decoded, so it is copied whole
+ *  whatever it holds (FR-168, CORE-FR-207). */
+declare class AssetFile {
+    readonly assetPath: string;
+    readonly contents: Uint8Array;
+    constructor(assetPath: string, contents: Uint8Array);
+}
+
+/** The names a layer goes by: what this repository authored itself, in a
+ *  charter of its own; what it installed from someone else, in a charter holding
+ *  where it came from (VENDOR-FR-010); and what the running engine brings
+ *  itself, supplied on every read and kept nowhere in the repository, so
+ *  nothing can refresh, edit or remove it (FR-015, FR-016). */
+declare const LAYER_NAMES: readonly ["repo", "package", "builtin"];
+
+/** Whose layer a primitive came from, and there are only the three. It says
+ *  where a primitive was written, never what it is called: one charter has one
+ *  id space, whichever layer or charter a file arrived in (FR-014, FR-019,
+ *  VENDOR-FR-009). */
+type LayerName = (typeof LAYER_NAMES)[number];
+
+/** The layer a primitive was read in: whose it is, and for one kept in the
+ *  repository, the charter it is kept in (VENDOR-FR-009). Where it is kept is
+ *  what keeps it to know, never the layer's (CORE-FR-213). */
+declare class PrimitiveLayer<Name extends LayerName = LayerName> {
+    readonly name: Name;
+    /** The charter it is kept in: `sdd`. None for the engine's own. */
+    readonly charterName?: string | undefined;
+    /** This repository's own layer, before a charter is named for it: a
+     *  primitive an author answered, not kept yet (FR-039). */
+    static readonly REPO: PrimitiveLayer<"repo">;
+    /** The engine's own layer: kept nowhere, so there is nothing to open (FR-015,
+     *  FR-018). */
+    static readonly BUILTIN: PrimitiveLayer<"builtin">;
+    private constructor();
+    /** The name every layer the repository installed goes by, as its
+     *  `cw-package.json` makes it one (VENDOR-FR-010). */
+    static get packageName(): "package";
+    /** The layer of a charter this repository authored: where a primitive is
+     *  written when it is authored here (FR-039, VENDOR-FR-010). */
+    static authoredLayerOf(charterName: string): PrimitiveLayer<"repo">;
+    /** The layer of a charter this repository installed, read-only
+     *  (VENDOR-FR-010). */
+    static installedLayerOf(charterName: string): PrimitiveLayer<"package">;
+}
+
+/** The delimiter a primitive's headers are written between. One constant for
+ *  the writing here and the reading in `PrimitiveFactory.create`, so the two cannot drift. */
+declare const DELIMITER = "---";
+
+type CommonHeaders = Readonly<z.infer<ReturnType<typeof BasePrimitive.headersSchema>>>;
+
+/**
+ * What every kind of primitive is: the headers its file declared, and the body
+ * loaded only when it activates (FR-002, FR-013).
+ *
+ * A kind's own class extends this, declares the headers it requires, and
+ * refuses a file that does not hold them — so having one is the promise that
+ * the kind's contract holds (FR-004). What a file declared is read once, where
+ * it is checked, and held as that kind's headers from then on.
+ */
+declare abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeaders> {
+    #private;
+    /** What this primitive's file declared, read as the contract of its kind:
+     *  typed by whichever kind this is, so `headers.globs` compiles on a guide
+     *  and nowhere else. */
+    readonly headers: Headers;
+    readonly body: string;
+    /** Every file of its folder beside its `index.md`, at any depth (FR-168). */
+    readonly assets: readonly AssetFile[];
+    static get delimiter(): typeof DELIMITER;
+    /**
+     * One kind's headers, read off what its file declared by that kind's schema, or
+     * one fault saying they are not what the kind holds (FR-004).
+     *
+     * The fault does not list what is wrong, header by header: it shows the kind's
+     * own sample, and an author holding the two side by side sees the difference.
+     * Where the schema said what is wrong in its own words — a rule spanning two
+     * headers, which no sample shows at a glance — those words are the message.
+     */
+    static headersOf<Schema extends z.ZodType>(sampledKind: {
+        readonly kind: string;
+        readonly sample: Readonly<Record<string, unknown>>;
+    }, headerSchema: Schema, headerRecord: Readonly<Record<string, unknown>>): Readonly<z.infer<Schema>>;
+    /** The headers every kind declares, whatever else its own contract asks for
+     *  (data-model §1). Each kind's own headers extend these, so what every
+     *  primitive holds is written once. */
+    static headersSchema(): z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    /** What every kind requires of its author, whatever else its own contract
+     *  asks for. A kind's own `requires` stands beside this rather than adding to
+     *  it, so whoever asks for a kind's headers asks for both (FR-039). `id` is
+     *  not among them: a primitive is named where it is asked for rather than
+     *  answered for, so what is left to ask about is what it is for. */
+    static readonly requires: RequiredHeaders;
+    /** The file a primitive's folder is read from, and compiled to (FR-141):
+     *  said here for whoever reads a folder before any primitive is read off it,
+     *  and by `index` on every primitive. */
+    static readonly indexFileName = "index.md";
+    /** The schema every kind's headers are read by, its own standing in place of
+     *  this. What a file is refused against, and the one place saying what shape
+     *  each header holds — including the ones a kind takes without requiring, so
+     *  whoever is writing a header reads its shape off the same contract a file
+     *  is refused against (FR-004). */
+    static readonly schema: z.ZodObject;
+    protected constructor(
+    /** What this primitive's file declared, read as the contract of its kind:
+     *  typed by whichever kind this is, so `headers.globs` compiles on a guide
+     *  and nowhere else. */
+    headers: Headers, body: string, 
+    /** Every file of its folder beside its `index.md`, at any depth (FR-168). */
+    assets?: readonly AssetFile[], 
+    /** The layer it was read in; a primitive authored here is in this
+     *  repository's. */
+    primitiveLayer?: PrimitiveLayer, 
+    /** Where what keeps it says it is kept, in its own scheme: `file:` for
+     *  files, `db:` for a database. Never read here, only said back to whoever
+     *  is told where it is (CORE-FR-213). */
+    keptUri?: string);
+    /** The layer it was read in: whose layer it came from. It says where it
+     *  was written, never what it is called (FR-014, FR-019). */
+    readonly layer: PrimitiveLayer;
+    /** Where it is kept, as what keeps it says: none for one not yet kept. The
+     *  engine's own is kept nowhere, and is said by the name of its layer
+     *  (FR-015). */
+    get uri(): string;
+    /** Whether a word someone searched for is anywhere a reader would look for
+     *  it: the id, the kind, what it is for, when its kind comes up, its
+     *  folder and file under its kind, its layer and the installed charter it came from,
+     *  or any header it declared — ignoring case, since whoever typed it
+     *  did not know how it was written (FR-114). */
+    hasWord(word: string): boolean;
+    /** Whether this primitive is available to an agent. No restriction means all. */
+    supportsAgent(_agentProvider: AgentProvider): boolean;
+    /** Which kind this is. Each class declares it as a literal, and those
+     *  literals are where `Kind` comes from. */
+    abstract readonly kind: string;
+    /** Its folder, from its charter folder: its kind, then each segment of its
+     *  id (FR-141). */
+    get primitiveFolder(): string;
+    /** The file of that folder it is read from (FR-141). */
+    get index(): string;
+    /** When a reader of this charter is to open a primitive of its kind at all:
+     *  the line its kind's class declares, in the words `cw kinds` says it in
+     *  (FR-002, FR-029). */
+    get activatesWhen(): string;
+    /** The hash of it written out, which is what a save writes: what a save is
+     *  checked against, so an edit made on disk since it was opened is not
+     *  written over (FR-078). */
+    get hash(): string;
+    /** Its id as every name given to an agent writes it, `/` as `-`:
+     *  `mfbs-no-any` for `mfbs/no-any`, so a skill is invoked as `/mfbs-no-any`
+     *  (FR-141, FR-171). Made here, once, so nothing that names an agent's file
+     *  spells it again. */
+    get normId(): string;
+    /**
+     * This primitive as the file it is authored in: its headers between the
+     * delimiters, and its body under them.
+     *
+     * The other direction of the reading `PrimitiveFactory.create` does, and the same
+     * frontmatter, so a file written here is a file that reads back as this
+     * primitive. Said here rather than by whoever writes, for the reason
+     * `description` is: what a primitive holds is the primitive's own, and a
+     * caller holding one already has everything the file says.
+     *
+     * The kind leads, since it is what decides how the rest is read (FR-003). A
+     * list is written the way the parser gives it back, so an author opening the
+     * file finds what they declared rather than a second spelling of it.
+     *
+     * Written as its author wrote it unless the compiler says otherwise (FR-139):
+     * `mixins` lend their bodies, before this one's own so it reads as the point
+     * and theirs as the setting, or after it where a mixin's `position` is `end`
+     * — nothing is merged and no header moves (FR-006);
+     * and `idReplacer` rewrites the body as its reader uses it, each mcp origin,
+     * script and template it names as a link to its file (FR-147).
+     */
+    writeMarkdown({ mixins, idReplacer, }?: {
+        /** The mixin primitives it pulls in, in the order it named them: all a
+         *  mixin lends is its body, and where it goes. */
+        readonly mixins?: readonly {
+            readonly body: string;
+            readonly headers: {
+                readonly position: "start" | "end";
+            };
+        }[];
+        readonly idReplacer?: (body: string) => string;
+    }): string;
+    /**
+     * The one line this primitive is found by, composed: what its author wrote it
+     * is for, and — where its kind decides when it applies — what it applies to.
+     *
+     * Said here rather than by whoever compiles, because what makes a kind
+     * activate is the kind's own contract (FR-001, FR-004): a skill's triggers are
+     * the author's words, which only a skill knows how to say in a line. A kind
+     * that nothing activates on its description is the description it was
+     * written with.
+     */
+    composeDescription(): string;
+}
+
+/**
+ * What one kind requires beyond the common headers, and the shape each of them
+ * takes: one line of text, or a list of names.
+ *
+ * Declared by the kind's own class, because what a kind requires is its own
+ * contract (FR-004). Written as data, so what a file being scaffolded is to be
+ * given is read off it (FR-039).
+ */
+type RequiredHeaders = Readonly<Record<string, "line" | "list">>;
+
+/** A role the agent delegates to, with the tools it may use (FR-004). */
+type AgentHeaders = Readonly<z.infer<typeof AgentPrimitive.schema>>;
+
+declare class AgentPrimitive extends BasePrimitive {
+    readonly headers: AgentHeaders;
+    static readonly kind: "agent";
+    readonly kind: "agent";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is: it is read both where a file is checked and where one is
+     *  scaffolded (FR-004, FR-039). */
+    static readonly requires: {
+        readonly tools: "list";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        tools: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        model: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "it is spawned by id, holding the `tools` it lists and nothing else \u2014 an mcp origin as `[[<id>]]`, or one of its tools as `[[<id>]]:<tool>`";
+    /** An agent as an author writes one: what a refused header is fixed with.
+     *  It holds one tool of an mcp origin the way an author writes it (FR-156). */
+    static readonly sample: AgentHeaders;
+    /** The agent its model is named for; none where it names no model. */
+    get modelProvider(): string | undefined;
+    /** The model this agent runs it on, as this agent names it; none where its
+     *  model is named for another agent, or not at all. */
+    modelOf(agentProvider: AgentProvider): string | undefined;
+    /** One agent, or every fault its headers have (FR-004). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): AgentPrimitive;
+}
+
+/** Reasoning a primitive cites, loaded only on demand. Beyond the common
+ *  headers it asks for nothing (FR-004). */
+type CorpusHeaders = Readonly<z.infer<typeof CorpusPrimitive.schema>>;
+
+declare class CorpusPrimitive extends BasePrimitive {
+    readonly headers: CorpusHeaders;
+    static readonly kind: "corpus";
+    readonly kind: "corpus";
+    /** What this kind requires beyond the common headers: nothing. Declared all
+     *  the same, since what a file is scaffolded with is read off this (FR-039). */
+    static readonly requires: {};
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "a primitive's `rationale` cites it \u2014 the reasoning, read when someone asks why";
+    /** A corpus as an author writes one: what a refused header is fixed with. */
+    static readonly sample: CorpusHeaders;
+    /** One corpus, or every fault its headers have (FR-004). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): CorpusPrimitive;
+}
+
+/** A standard the agent is held to. Its body is loaded when a touched file
+ *  matches one of its globs, and on every turn where it names none (FR-004). */
+type GuideHeaders = Readonly<z.infer<typeof GuidePrimitive.schema>>;
+
+declare class GuidePrimitive extends BasePrimitive {
+    readonly headers: GuideHeaders;
+    static readonly kind: "guide";
+    readonly kind: "guide";
+    /** What this kind requires beyond the common headers: nothing. Declared all
+     *  the same, since what a file is scaffolded with is read off this (FR-039). */
+    static readonly requires: {};
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "a touched file matches one of its `globs`, or every turn where globs are not specified";
+    /** A guide as an author writes one: what a refused header is fixed with. */
+    static readonly sample: GuideHeaders;
+    /** One guide, or every fault its headers have (FR-004). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): GuidePrimitive;
+}
+
+/**
+ * One MCP server, an mcp origin where a primitive's reasons are kept outside the
+ * repository: reached at an `endpoint`, or started as a `command` (FR-142).
+ *
+ * One object refined rather than a union of the two shapes, so every header it
+ * takes is still read off its `shape` (FR-039); which of the two a file holds,
+ * and what that shape asks for beside it, is the refinement's to say.
+ */
+type McpHeaders = Readonly<z.infer<typeof McpPrimitive.schema>>;
+
+declare class McpPrimitive extends BasePrimitive {
+    readonly headers: McpHeaders;
+    static readonly kind: "mcp";
+    readonly kind: "mcp";
+    /** What this kind requires beyond the common headers. `endpoint` or
+     *  `command` is required too, but which depends on the shape, so the schema's
+     *  refinement says it rather than this (FR-004, FR-039). */
+    static readonly requires: {
+        readonly tools: "list";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        endpoint: z.ZodOptional<z.ZodString>;
+        command: z.ZodOptional<z.ZodString>;
+        args: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        auth: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodEnum<{
+            oauth: "oauth";
+            token: "token";
+        }>>>>;
+        tokenEnv: z.ZodOptional<z.ZodString>;
+        path: z.ZodOptional<z.ZodString>;
+        tools: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "a primitive's body names it as `[[<id>]]` \u2014 an mcp origin outside the repository, reached through `cw run mcp`";
+    /** An mcp reached at an endpoint, as an author writes one: what a refused
+     *  header is fixed with. */
+    static readonly sample: McpHeaders;
+    /** The same mcp origin started as a local process: what a refused file declaring
+     *  `command` is held up against, since that is the shape it was nearer. */
+    static readonly commandSample: McpHeaders;
+    /** What a developer signs in to, and what mcp origins are told apart by beside
+     *  their `path`: the endpoint, or the command followed by each of its
+     *  arguments. The refinement has already held that one of the two is here
+     *  (FR-142). */
+    get address(): string;
+    /** The mcp origin this mcp is served from, told apart by its address and
+     *  path, never its name, joined by a character neither side can hold: a
+     *  path is one line, and an address is an endpoint or a command line. */
+    get originKey(): string;
+    /** One mcp, or every fault its headers have, shown the sample of the shape
+     *  it declared (FR-004, FR-142). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): McpPrimitive;
+}
+
+/** Headers and body reused by other primitives. A leaf: it lends its body to
+ *  the primitive that pulls it in, and pulls in none of its own (FR-006). */
+type MixinHeaders = Readonly<z.infer<typeof MixinPrimitive.schema>>;
+
+declare class MixinPrimitive extends BasePrimitive {
+    readonly headers: MixinHeaders;
+    static readonly kind: "mixin";
+    readonly kind: "mixin";
+    /** What this kind requires beyond the common headers: nothing. Declared all
+     *  the same, since what a file is scaffolded with is read off this (FR-039). */
+    static readonly requires: {};
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodUndefined>;
+        position: z.ZodDefault<z.ZodEnum<{
+            start: "start";
+            end: "end";
+        }>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "never on its own: its body is lent to the primitives that pull it in";
+    /** A mixin as an author writes one: what a refused header is fixed with. */
+    static readonly sample: MixinHeaders;
+    /** One mixin, or every fault its headers have (FR-004, FR-006). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): MixinPrimitive;
+}
+
+/** An ordered procedure loaded when a request matches its triggers (FR-004). */
+type PlaybookHeaders = Readonly<z.infer<typeof PlaybookPrimitive.schema>>;
+
+declare class PlaybookPrimitive extends BasePrimitive {
+    readonly headers: PlaybookHeaders;
+    static readonly kind: "playbook";
+    readonly kind: "playbook";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is: it is read both where a file is checked and where one is
+     *  scaffolded (FR-004, FR-039). */
+    static readonly requires: {
+        readonly triggers: "list";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        triggers: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        "disable-user-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
+        "disable-model-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "one of its `triggers` matches; the body is a sequence of skills";
+    /** A playbook as an author writes one: what a refused header is fixed with. */
+    static readonly sample: PlaybookHeaders;
+    /** What this is found by: what it is for, and the requests its author said
+     *  bring it up. */
+    composeDescription(): string;
+    /** One playbook, or every fault its headers have (FR-004). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): PlaybookPrimitive;
+}
+
+type AgentBasedHeaders = Readonly<z.infer<ReturnType<typeof AgentBasedPrimitive.headersSchema>>>;
+
+/** Shared provider selection for posture and sensor primitives. */
+declare abstract class AgentBasedPrimitive<Headers extends AgentBasedHeaders = AgentBasedHeaders> extends BasePrimitive<Headers> {
+    static headersSchema(): z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    supportsAgent(agentProvider: AgentProvider): boolean;
+}
+
+/** What the agent may and may not do, as permission lists (FR-004). */
+type PostureHeaders = Readonly<z.infer<typeof PosturePrimitive.schema>>;
+
+declare class PosturePrimitive extends AgentBasedPrimitive {
+    readonly headers: PostureHeaders;
+    static readonly kind: "posture";
+    readonly kind: "posture";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is: it is read both where a file is checked and where one is
+     *  scaffolded (FR-004, FR-039). */
+    static readonly requires: {
+        readonly allow: "list";
+        readonly deny: "list";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        allow: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        deny: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "always, wherever the agent can be told what to `allow` and what to `deny`";
+    /** A posture as an author writes one: what a refused header is fixed with. */
+    static readonly sample: PostureHeaders;
+    /** One posture, or every fault its headers have (FR-004). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): PosturePrimitive;
+}
+
+/** Files the agent or a sensor runs, kept as real files beside the script's
+ *  `index.md`: its assets (FR-165). */
+type ScriptHeaders = Readonly<z.infer<typeof ScriptPrimitive.schema>>;
+
+declare class ScriptPrimitive extends BasePrimitive {
+    readonly headers: ScriptHeaders;
+    static readonly kind: "script";
+    readonly kind: "script";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is (FR-004, FR-039). */
+    static readonly requires: {
+        readonly executionPath: "line";
+    };
+    /** The schema its headers are read by (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        executionPath: z.ZodString;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all (FR-002): where
+     *  its assets are copied is a link to a script's folder, written as the
+     *  projection lays it. */
+    static readonly activatesWhen: string;
+    /** A script as an author writes one: what a refused header is fixed with. */
+    static readonly sample: ScriptHeaders;
+    /** One script, or every fault its headers have (FR-004). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): ScriptPrimitive;
+    /** The asset that runs, as a path inside its folder: `run.sh` of
+     *  `./run.sh`. */
+    get executionPathInFolder(): string;
+    /** Whether an asset of it is the one its `executionPath` names: the one
+     *  run by its path, and no other (FR-160). */
+    isExecutionFile(filePath: string): boolean;
+}
+
+/** The events a charter knows how to be raised by, and the only ones a sensor
+ *  may name (FR-004).
+ *
+ *  Closed the way the kinds are: a name outside it is a sensor nothing will
+ *  ever fire, and saying so where the file is read is the one place an author
+ *  finds out. An agent that raises none of them compiles no hook for it, which is
+ *  that agent's to say and not this list's. */
+declare const SIGNALS: readonly ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop", "SubagentStop", "PreCompact", "SessionStart", "SessionEnd", "PermissionRequest", "SubagentStart", "PostCompact"];
+
+/** A command the agent's own harness runs when a signal fires (FR-004). */
+type SensorHeaders = Readonly<z.infer<typeof SensorPrimitive.schema>>;
+
+declare class SensorPrimitive extends AgentBasedPrimitive {
+    static get signals(): typeof SIGNALS;
+    readonly headers: SensorHeaders;
+    static readonly kind: "sensor";
+    readonly kind: "sensor";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is: it is read both where a file is checked and where one is
+     *  scaffolded (FR-004, FR-039). */
+    static readonly requires: {
+        readonly signal: "line";
+        readonly run: "line";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        signal: z.ZodEnum<{
+            PreToolUse: "PreToolUse";
+            PostToolUse: "PostToolUse";
+            UserPromptSubmit: "UserPromptSubmit";
+            Stop: "Stop";
+            SubagentStop: "SubagentStop";
+            PreCompact: "PreCompact";
+            SessionStart: "SessionStart";
+            SessionEnd: "SessionEnd";
+            PermissionRequest: "PermissionRequest";
+            SubagentStart: "SubagentStart";
+            PostCompact: "PostCompact";
+        }>;
+        run: z.ZodString;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "the `signal` it names is raised, and the harness runs what it says to `run`";
+    /** A sensor as an author writes one: what a refused header is fixed with. */
+    static readonly sample: SensorHeaders;
+    /** One sensor, or every fault its headers have (FR-004). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): SensorPrimitive;
+}
+
+/** Know-how loaded when a request matches its triggers (FR-004). */
+type SkillHeaders = Readonly<z.infer<typeof SkillPrimitive.schema>>;
+
+declare class SkillPrimitive extends BasePrimitive {
+    readonly headers: SkillHeaders;
+    static readonly kind: "skill";
+    readonly kind: "skill";
+    /** What this kind requires beyond the common headers, declared where its
+     *  contract is: it is read both where a file is checked and where one is
+     *  scaffolded (FR-004, FR-039). */
+    static readonly requires: {
+        readonly triggers: "list";
+    };
+    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
+     *  against, and what says the shape of every header this kind takes, required
+     *  or not (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        triggers: z.ZodReadonly<z.ZodArray<z.ZodString>>;
+        "disable-user-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
+        "disable-model-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all, said
+     *  where the kind's contract is: the neutral surface lists one
+     *  line per kind and none of them is written down twice (FR-002). */
+    static readonly activatesWhen = "one of its `triggers` matches what is being asked";
+    /** A skill as an author writes one: what a refused header is fixed with. */
+    static readonly sample: SkillHeaders;
+    /** What this is found by: what it is for, and the requests its author said
+     *  bring it up. */
+    composeDescription(): string;
+    /** One skill, or every fault its headers have (FR-004). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): SkillPrimitive;
+}
+
+/** A file the agent fills or copies, written as its body. Beyond the common
+ *  headers it asks for nothing: the agent reads what kind of file it is off
+ *  the body itself (FR-158). */
+type TemplateHeaders = Readonly<z.infer<typeof TemplatePrimitive.schema>>;
+
+declare class TemplatePrimitive extends BasePrimitive {
+    readonly headers: TemplateHeaders;
+    static readonly kind: "template";
+    readonly kind: "template";
+    /** What this kind requires beyond the common headers: nothing. Declared all
+     *  the same, since what a file is scaffolded with is read off this (FR-039). */
+    static readonly requires: {};
+    /** The schema its headers are read by (FR-004). */
+    static readonly schema: z.ZodObject<{
+        id: z.ZodString;
+        description: z.ZodString;
+        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+        rationale: z.ZodOptional<z.ZodString>;
+        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>;
+    /** When a reader of this charter is to open this kind at all (FR-002). */
+    static readonly activatesWhen = "a primitive names it as `[[<id>]]` \u2014 a file the agent fills or copies, written as its body";
+    /** A template as an author writes one: what a refused header is fixed with. */
+    static readonly sample: TemplateHeaders;
+    /** One template, or every fault its headers have (FR-004). */
+    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): TemplatePrimitive;
+}
+
+/** The classes, one per kind. Adding a kind is a file beside them and a line here; what
+ *  the kinds are is read back off this list rather than written down twice. */
+declare const PRIMITIVE_CLASSES: readonly [typeof GuidePrimitive, typeof SensorPrimitive, typeof SkillPrimitive, typeof PlaybookPrimitive, typeof AgentPrimitive, typeof PosturePrimitive, typeof CorpusPrimitive, typeof MixinPrimitive, typeof McpPrimitive, typeof ScriptPrimitive, typeof TemplatePrimitive];
+
+/**
+ * A primitive of any kind, discriminated on `kind`: reading
+ * `headers.globs` compiles on a guide and nowhere else.
+ *
+ * Each kind is a class of its own, holding what it requires of a file and
+ * refusing one that does not hold it, so having a `Primitive` is the promise
+ * that the kind's contract holds (FR-004). Read off what those classes return
+ * rather than listed again: a constructor is protected, so `of` is the only way
+ * one comes into being, and what it hands back is what a primitive is.
+ */
+type Primitive = ReturnType<(typeof PRIMITIVE_CLASSES)[number]["of"]>;
+
+/** The primitive kinds, each read off the class that reads it. The set is
+ *  closed: any other value is a fault naming the file and the offending kind
+ *  (FR-001). */
+declare const KINDS: readonly ("agent" | "corpus" | "guide" | "mcp" | "mixin" | "playbook" | "posture" | "script" | "sensor" | "skill" | "template")[];
+
+type Kind = (typeof KINDS)[number];
+
+/** One header a kind's author may answer for: the shape the answer takes,
+ *  whether a file written without it is refused, and — where the kind reads it
+ *  from a closed set — the values it may hold. What is asked before a file of
+ *  this kind can be written, and what is refused where a file was written
+ *  without it — one declaration, read twice. */
+declare class PrimitiveHeader {
+    readonly field: string;
+    readonly shape: "line" | "list";
+    readonly isRequired: boolean;
+    /** Every value the kind reads this header as, where the set is closed — a
+     *  sensor's `signal` — so it is chosen rather than typed (FR-118). A header
+     *  whose set is open has none. */
+    readonly allowedValues?: readonly string[] | undefined;
+    constructor(field: string, shape: "line" | "list", isRequired: boolean, 
+    /** Every value the kind reads this header as, where the set is closed — a
+     *  sensor's `signal` — so it is chosen rather than typed (FR-118). A header
+     *  whose set is open has none. */
+    allowedValues?: readonly string[] | undefined);
+}
+
+/** Every kind of primitive the charter knows, and how a primitive is read, made and named. */
+declare class Primitives {
+    static get classes(): typeof PRIMITIVE_CLASSES;
+    static get kinds(): typeof KINDS;
+    /** An id as someone typed it, at a command or in a request, held to the shape
+     *  an id is written in: text that is not one names nothing to look for
+     *  (FR-172). */
+    static idOf(typedId: string): string;
+    static isKind(kindName: unknown): kindName is Kind;
+    /**
+     * Every header one kind takes: what every primitive declares, and what this
+     * kind's own contract adds on top of it — each with the shape it holds and
+     * whether the kind refuses a file without it (FR-004, FR-039).
+     *
+     * Read off the kind's own class rather than listed again here, so a kind that
+     * grows a header is asked for it without anything else being told. The shape
+     * comes off the schema a file is refused against, so a header a kind takes
+     * without requiring — a guide's globs — is written the shape it is read as, and
+     * whoever answers one reads the same contract that refuses it.
+     *
+     * `kind` and `id` are not among them: the first is what is being asked about
+     * and the second is what the primitive is to be called, so both are known
+     * before there is anything to ask.
+     */
+    static headersOf(kind: Kind): readonly PrimitiveHeader[];
+    /** One primitive of this kind as its own class declares one, written out the
+     *  way a file holds it — the kind first, since it is what decides how the rest
+     *  is read. What an author is shown beside the headers they are to answer, and
+     *  the same sample a refused file is held up against (FR-001). */
+    static sampleOf(kind: Kind): string;
+    private constructor();
+}
+
+/**
+ * One charter, read: what the engine brings, what this repository authored,
+ * what it installed as charters holding a `cw-package.json`, and what any of
+ * them got wrong.
+ *
+ * Every question about the charter as a whole is asked of it here — what a
+ * primitive is named by, which mixin a name means, what is wrong once the files
+ * are read together — so nothing outside joins an installed charter's name onto anything by
+ * hand.
+ */
+declare class CharterRoot {
+    /** Every primitive this charter holds, whichever layer authored it: what
+     *  the engine brings, what this repository wrote and what it installed as
+     *  charters holding a `cw-package.json`, each under the file it was
+     *  authored in and the layer
+     *  its layer gives it. What a primitive says is its own; where it was
+     *  written is what a fault is filed under (SC-003) and what the catalogue
+     *  records (FR-011). */
+    readonly primitives: readonly Primitive[];
+    /** The files that were meant to be primitives and could not be read as one,
+     *  and why, wherever they were. Held rather than raised: a charter is worth
+     *  having with one file broken, and the broken one is worth naming
+     *  (FR-009). */
+    readonly faultsByFiles: FaultsByFile;
+    /** The layer of everything kept, read as a primitive or not, by where it is
+     *  kept: what a fault under it is weighed by (FR-005). */
+    readonly primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>>;
+    /** Where an author edits this charter, in the words of the store keeping
+     *  it: what each agent is told to edit, never read off `cw`'s own layout
+     *  (SDK-FR-020, CORE-FR-213). */
+    readonly charterPlace: string;
+    constructor(
+    /** Every primitive this charter holds, whichever layer authored it: what
+     *  the engine brings, what this repository wrote and what it installed as
+     *  charters holding a `cw-package.json`, each under the file it was
+     *  authored in and the layer
+     *  its layer gives it. What a primitive says is its own; where it was
+     *  written is what a fault is filed under (SC-003) and what the catalogue
+     *  records (FR-011). */
+    primitives: readonly Primitive[], 
+    /** The files that were meant to be primitives and could not be read as one,
+     *  and why, wherever they were. Held rather than raised: a charter is worth
+     *  having with one file broken, and the broken one is worth naming
+     *  (FR-009). */
+    faultsByFiles: FaultsByFile, 
+    /** The layer of everything kept, read as a primitive or not, by where it is
+     *  kept: what a fault under it is weighed by (FR-005). */
+    primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>>, 
+    /** Where an author edits this charter, in the words of the store keeping
+     *  it: what each agent is told to edit, never read off `cw`'s own layout
+     *  (SDK-FR-020, CORE-FR-213). */
+    charterPlace: string);
+    /** Everything wrong with this charter, under the file that has to change: the
+     *  files that could not be read as a primitive at all, and what the ones that
+     *  were read get wrong together. The two never name one file — a file reading
+     *  refused holds no primitive to get anything else wrong — so one asking is
+     *  the whole answer (FR-009). */
+    get allFaultsByFiles(): FaultsByFile;
+    /**
+     * Every primitive under the id the whole charter names it by (FR-015,
+     * FR-017).
+     *
+     * One id space covers every layer and every kind, so which file declares a
+     * name is a question about the whole charter and not about any one layer.
+     * The first claim on an id is the one in here where two files claim it: a
+     * collision is what `compositeFaultsByFiles` is for, and it names both files
+     * there; nothing is asked to explain a charter that has one (SC-006).
+     */
+    /** Every primitive naming an agent outside `agentNames`, the agents the
+     *  charter can be compiled for, under the file that has to change: in the
+     *  agents it is for, or in the model it runs on (FR-033). */
+    agentFaultsByFilesOf(agentNames: readonly string[]): FaultsByFile;
+    get primitiveById(): ReadonlyMap<string, Primitive>;
+    /** Every mixin one primitive uses, in the order it named them (FR-014). A
+     *  name nothing answers to, or that answers with another kind, is left out:
+     *  `compositeFaultsByFiles` already names that file as an error. */
+    mixinsOf(pullingPrimitive: Primitive): readonly Primitive[];
+    /** The corpus one primitive cites as its rationale, or nothing where it cites
+     *  none or cites one this charter does not hold as a corpus — which
+     *  `compositeFaultsByFiles` already names (FR-005, FR-014). */
+    rationaleOf(citingPrimitive: Primitive): Primitive | undefined;
+    /** Every primitive that pulls one mixin in; nothing for any other kind
+     *  (FR-014). */
+    pullersOf(mixin: Primitive): readonly Primitive[];
+    /** Every primitive citing one corpus as its rationale; nothing for any other
+     *  kind (FR-014). */
+    citersOf(corpus: Primitive): readonly Primitive[];
+    /** Every primitive naming one, as `[[<id>]]` (FR-144, FR-163, FR-172). */
+    mentionersOf(referencedPrimitive: Primitive): readonly Primitive[];
+    /** Every id one primitive names, whether the charter holds it or not: as
+     *  `[[<id>]]`, as an mcp origin among its tools, as a script its `run`
+     *  names, as a mixin it pulls in, or as its rationale — what a charter
+     *  including another is read off (VENDOR-FR-018). */
+    namedIdsOf(namingPrimitive: Primitive): readonly string[];
+    /** The ids one primitive names as `[[<id>]]`, whether the charter holds them
+     *  or not: in its body (FR-143, FR-172); for an agent, each mcp origin it holds by
+     *  listing it among its tools (FR-156); and for a sensor, each script its
+     *  `run` names (FR-161). */
+    private findMentionedIds;
+    /** Does what a mixin lends reach as far as the primitive pulling it in, or
+     *  that primitive no further than the mixin? A side that names no files is asking about
+     *  nothing in particular, and is left alone (FR-006). */
+    private isMixinReaching;
+    /**
+     * What is wrong with this charter that is wrong with no one file on its own,
+     * under the file that has to change (FR-009).
+     *
+     * Reading refused the files whose own headers do not hold, and said so where
+     * it read them; what is left are the questions no single file answers. Every
+     * layer is read into one id space, the way one registry holds one name
+     * per package: two files claim one id; one names a mixin nothing
+     * answers to; one pulls in a mixin that speaks about other files than it does
+     * — a mixin lends its body at projection time, so what makes the two belong
+     * together is the files they both apply to (FR-006, FR-014). One cites a
+     * rationale no corpus answers to, which is a warning rather than an error:
+     * the rule holds without its reasoning, and the author is told the reasoning
+     * is gone (FR-005). A corpus nobody cites and a mixin nobody pulls in are
+     * warnings too: nothing breaks, and nothing reads them either (FR-014). So
+     * are an mcp nothing names (FR-144) and a script or a template nothing names
+     * (FR-163). A name no layer holds is an error (FR-162), and so are an agent
+     * holding a tool its mcp does not declare — the role would be promised a
+     * tool it cannot have (FR-156) — and a script whose `executionPath` names
+     * no asset of it (FR-165).
+     */
+    get compositeFaultsByFiles(): FaultsByFile;
+}
+
+/**
+ * One item of what a build compiles to: its text (CORE-FR-220). Every item of
+ * a `CharterOutput` is one of these — the catalogues, `CHARTER.md`, the mcp
+ * origins, the built sensors and each compiled primitive — each made by its
+ * own factory.
+ *
+ * Where it lands inside the output, and how another item's text names it, is
+ * `OutputPath`'s; where the output lands is the projection's (CORE-FR-221).
+ */
+declare abstract class CharterOutputItem {
+    /** What it holds, as a build lays it. */
+    abstract get text(): string;
+}
+
+/**
+ * Everything one reading of a charter compiles to (FR-021): the items a
+ * build lays, naming no place but inside the compiled output — where the
+ * output lands, and what each agent reads of it, is each projection's
+ * (CORE-FR-220, CORE-FR-221).
+ *
+ * What every reader of the charter gets is among them whether an agent is
+ * installed or not: the listing, and the file that orients a reader to it
+ * (FR-019). What the agents this repository runs get is each agent's own
+ * listing among them, and the rest its projection makes of them (FR-018).
+ */
+declare class CharterOutput {
+    #private;
+    /** One more item, laid after those already added (FR-020, FR-021). */
+    add(charterOutputItem: CharterOutputItem): void;
+    /** Every item, in the order a build lays them. */
+    get charterOutputItems(): readonly CharterOutputItem[];
+    /** The one item of a class it holds: a build adds each such item once, so
+     *  one missing is the engine's own fault, never the person's. */
+    findCharterOutputItem<Item extends CharterOutputItem>(itemClass: abstract new (...itemArguments: any[]) => Item): Item;
+}
+
+/**
+ * One file a build has decided about, before anything on disk moves.
+ *
+ * Where it goes, what it would hold once the build is done, and what is there
+ * now — so what a build would do to it is read off the plan rather than worked
+ * out again against disk (FR-022).
+ */
+declare class WritePlan {
+    /** Where it sits, at its path from what is built — the repository, or a
+     *  checkout of it: what a build says it did. */
+    readonly path: string;
+    /** Where it sits, at its path from the repository: where it is written. */
+    readonly filePath: string;
+    /** What the build would leave in it, or nothing where the plan is to take
+     *  it away. */
+    readonly contents?: string | Uint8Array | undefined;
+    /** What it holds now, or nothing where there is no such file yet: its
+     *  bytes where it is a copy, which are what it is compared by
+     *  (CORE-FR-207). */
+    readonly heldContents?: string | Uint8Array | undefined;
+    /** Run by its path once it is down: a built script (FR-160). */
+    readonly isExecutable?: boolean | undefined;
+    constructor(
+    /** Where it sits, at its path from what is built — the repository, or a
+     *  checkout of it: what a build says it did. */
+    path: string, 
+    /** Where it sits, at its path from the repository: where it is written. */
+    filePath: string, 
+    /** What the build would leave in it, or nothing where the plan is to take
+     *  it away. */
+    contents?: string | Uint8Array | undefined, 
+    /** What it holds now, or nothing where there is no such file yet: its
+     *  bytes where it is a copy, which are what it is compared by
+     *  (CORE-FR-207). */
+    heldContents?: string | Uint8Array | undefined, 
+    /** Run by its path once it is down: a built script (FR-160). */
+    isExecutable?: boolean | undefined);
+}
+
+/** One folder a plan puts down as a source holds it, every file under it at
+ *  any depth, replacing whatever that folder held (CORE-FR-042). */
+declare class CopyPlan {
+    /** Where it sits in the source it is copied from, the empty path its
+     *  root. */
+    readonly sourcePath: string;
+    /** Where it lands, at its path from the repository. */
+    readonly destinationPath: string;
+    constructor(
+    /** Where it sits in the source it is copied from, the empty path its
+     *  root. */
+    sourcePath: string, 
+    /** Where it lands, at its path from the repository. */
+    destinationPath: string);
+}
+
+/** One reading of a charter, or of an installed charter's source, said as what it would
+ *  do to disk: a build writes each file, an install copies a folder too. */
+declare class ProjectionPlan<Plan extends WritePlan | CopyPlan = WritePlan> {
+    readonly warnings: readonly string[];
+    /** What the last build left, whether this one writes it again or not; or
+     *  what an install takes away once it is down. */
+    readonly cleanupPlan: readonly WritePlan[];
+    /** Everything this reading would put down, in order. */
+    readonly writePlans: readonly Plan[];
+    constructor(warnings: readonly string[], 
+    /** What the last build left, whether this one writes it again or not; or
+     *  what an install takes away once it is down. */
+    cleanupPlan: readonly WritePlan[], 
+    /** Everything this reading would put down, in order. */
+    writePlans: readonly Plan[]);
+}
+
+/**
+ * What one primitive, or the charter itself, puts into an agent's main
+ * context, as the text the agent is sent: when a session opens, or — where it
+ * names `globs` — when a file they match is touched (EVAL-FR-001,
+ * EVAL-FR-003). `id` is the primitive's, or, for what the charter puts there
+ * itself, the file it is laid at.
+ *
+ * Its text is as it is laid: an agent reads what is laid, and what that is
+ * is the agent's projection's to say (CORE-FR-221).
+ */
+declare class MainContextText {
+    readonly id: string;
+    readonly kind: string;
+    readonly text: string;
+    readonly globs?: readonly string[] | undefined;
+    constructor(id: string, kind: string, text: string, globs?: readonly string[] | undefined);
+}
+
+/**
+ * Where `cw`'s own store keeps a repository's charter, each folder by its path
+ * from the repository's root, and nothing of where the repository is
+ * (CORE-FR-217, CORE-FR-224). The one place that layout is known, as
+ * `OutputPath` is the output's: a store of an integrator's own keeps the
+ * charter in a layout of its own, and says where an author edits it
+ * (SDK-FR-020, CORE-FR-213).
+ */
+declare class CharterPath {
+    /** Where a repository keeps everything this engine reads and writes (plan
+     *  §3): what it configured itself with, the charter it authored, and what
+     *  the charter compiles to, so the three are under one folder rather than
+     *  three that drift. */
+    readonly workspaceFolderPath = ".cw";
+    /** The charter root, the only part of the workspace a person authors: one
+     *  folder per charter, `.cw/charter/<charter>/`, each holding its
+     *  primitives, test cases and eval cases (CORE-FR-224, VENDOR-FR-009). */
+    readonly charterFolderPath: string;
+    /** Where the charters of a source are checked out before any charter the
+     *  charter root holds is replaced, so a source refused while copied
+     *  replaces nothing; taken away once the install is over (VENDOR-FR-017). */
+    readonly installingFolderPath: string;
+    /** The folder of a charter holding its primitives, a folder per kind:
+     *  `.cw/charter/<charter>/primitive/<kind>/<id>/` (VENDOR-FR-009). */
+    readonly primitivesFolderName = "primitive";
+    /** The file that makes a charter installed, read-only: where it came from
+     *  (VENDOR-FR-010). */
+    readonly installedCharterRecordFileName = "cw-package.json";
+    /** The folder of a charter holding its test cases, one file of cases each
+     *  (VENDOR-FR-009). */
+    readonly testFolderName = "test";
+    /** The folder an older layout kept installed charters in, right under the workspace
+     *  or the charter root: refused where it is still held (VENDOR-FR-011). */
+    readonly oldInstalledChartersFolderName = "vendor";
+    /** The folder of a charter holding its eval cases, one file of cases each
+     *  (VENDOR-FR-009). */
+    readonly evalFolderName = "eval";
+}
+
+/**
+ * Where each item of the compiled output lands inside it, and how one item's
+ * text names another (CORE-FR-220, CORE-FR-221). The one place the output's
+ * layout is known: an item is what it holds, and its path is asked of this.
+ *
+ * Where the output itself lands is no part of the engine's, so every path
+ * into it is written under `cwOutFolderPlaceholder`, and whoever lays or
+ * reads the output says where that is.
+ */
+declare class OutputPath {
+    /** What every path into the output starts with, in place of the folder it
+     *  lands in. */
+    readonly cwOutFolderPlaceholder = "$CW_OUT";
+    /** The file every agent's entry file sends a reader to (FR-019, FR-051). */
+    readonly charterMdFileName = "CHARTER.md";
+    /** The mcp origins the last build listed (FR-145). */
+    readonly mcpOriginsFileName = "mcp-origins.json";
+    /** The sensors the last build compiled (FR-179). */
+    readonly sensorsFileName = "sensors.json";
+    /** Where this item lands inside the output, by what it is. */
+    getPath(charterOutputItem: CharterOutputItem): string;
+    /** A catalogue's file: the listing every agent shares, `catalogue.json`, or
+     *  one agent's own, named by the agent (FR-011). */
+    getCatalogueFileName(agentName?: string): string;
+    /** Where the compiled primitive of this kind and id lands, every agent's:
+     *  `guide/no-any/index.md`. */
+    getCompiledPrimitivePath(kind: string, id: string): string;
+    /** This item named in another's text, as `getLinkTo` names its path. */
+    getLink(charterOutputItem: CharterOutputItem, suffix?: string): string;
+    /**
+     * The item at `path` named in another's text, where that item is not in
+     * hand: `$CW_OUT/` and its path inside the output, then on by `suffix`, a
+     * path from the item's own folder, where one is given: `./` or `../` before
+     * it read as a link reads it, every character of it a URL's, a file's name
+     * beside it otherwise.
+     */
+    getLinkTo(path: string, suffix?: string): string;
+}
+
+/**
+ * The charter module's constants: the layout of the store `cw` keeps the
+ * charter root in, which a source keeps its charters in too, and of the output, each
+ * one value, and nothing of
+ * where the repository is (CORE-FR-215, CORE-FR-217).
+ */
+
+/** The layout of the store `cw` keeps the charter in, made once: every folder
+ *  of it is asked of this (CORE-FR-224, SDK-FR-020). */
+declare const charterPath: CharterPath;
+
+/** The output's layout, made once: every path into the compiled output, and
+ *  every link from one of its items to another, is asked of it (CORE-FR-220,
+ *  CORE-FR-221). */
+declare const outputPath: OutputPath;
+
+/**
+ * A document this engine wrote, saying so in itself (FR-017, FR-020).
+ *
+ * A build takes away what it no longer compiles, and where it looks is a
+ * directory an agent reads — the same directory someone may have written a command
+ * or a skill of their own into, by hand, long before a charter was ever built
+ * here. A path is not enough to tell the two apart, and guessing wrong destroys
+ * someone's work. So a file this build puts down carries a stamp, and a build
+ * deletes nothing that does not.
+ *
+ * It doubles as what a reader needs: a compiled file someone opens says where to
+ * go and change it, rather than being edited into something the next build
+ * undoes.
+ *
+ * Only what is written as prose can carry one. A listing is JSON and has nowhere
+ * to say it, and an agent's settings file is the repository's as much as this
+ * engine's — those two are known by where they are instead.
+ */
+declare const GENERATED_STAMP = "Generated by cherry-works";
+
+/**
+ * One document with the stamp on the end of it: making one is stamping it.
+ *
+ * The one way any output of this engine becomes the text of a document, so every
+ * one of them carries the stamp and none of them has to remember to. What the
+ * document says above it is whoever compiled it; this adds the line and nothing
+ * else.
+ */
+declare class StampedDocument {
+    /** The document's text, the stamp on the end of it. */
+    readonly text: string;
+    constructor(document: string);
+    /** The stamp alone, as it ends every stamped document. */
+    static get footer(): string;
+    /** The words of the stamp, for a document that is no prose and says it
+     *  another way. */
+    static get stampText(): typeof GENERATED_STAMP;
+}
+
+/**
+ * One file an agent reads, whichever agent: what it is and what it holds, so
+ * laying it knows nothing of the agent that asked for it but its kind there
+ * and its id (FR-018).
+ *
+ * An agent's file is a document (`DocumentBasedComponent`) or settings
+ * (`SettingBasedComponent`); each of an agent's own kinds extends one of the two.
+ * Where it lands, and how it goes over what is there, is its agent's
+ * projection's (CORE-FR-221).
+ */
+declare abstract class ProviderComponent {
+    /** The agent that reads it. */
+    readonly agentProvider: AgentProvider;
+    /** The kind of the primitive it was compiled from, or `charter` where it
+     *  is the whole charter's. */
+    readonly primitiveKind: string;
+    /** What that agent knows it by: the name it is called, or, for a file of
+     *  the whole charter, the folder it is for or the part it plays. */
+    readonly id: string;
+    /** The whole of what the file holds, or of this engine's part of it, each
+     *  path into the compiled output under `$CW_OUT/`. */
+    readonly text: string;
+    readonly warnings: readonly string[];
+    constructor(
+    /** The agent that reads it. */
+    agentProvider: AgentProvider, 
+    /** The kind of the primitive it was compiled from, or `charter` where it
+     *  is the whole charter's. */
+    primitiveKind: string, 
+    /** What that agent knows it by: the name it is called, or, for a file of
+     *  the whole charter, the folder it is for or the part it plays. */
+    id: string, 
+    /** The whole of what the file holds, or of this engine's part of it, each
+     *  path into the compiled output under `$CW_OUT/`. */
+    text: string, warnings?: readonly string[]);
+    /** Which of its agent's kinds this is. Each class declares it as a literal. */
+    abstract readonly kind: string;
+}
+
+/** A document this agent reads no frontmatter of: the file it loads whole,
+ *  whatever is in it. Its whole content is the body. */
+type NoHeaders = Record<string, never>;
+
+/**
+ * One file an agent reads as a document: frontmatter, then a body (FR-018).
+ *
+ * The other side of the compilation. A charter is what an author wrote — the
+ * kinds, in the charter's words; this is what one agent reads — its kinds, in
+ * its words. Between the two sits a compiler, and the two never meet anywhere
+ * else: a `guide` becomes a claude skill there and nowhere in the charter, and
+ * the charter does not know this file exists.
+ *
+ * A document is frontmatter this agent reads first and a body it opens once that
+ * frontmatter says to. A kind of this agent that is one is a class extending this,
+ * declaring — in an interface of its own — what its frontmatter holds; a kind
+ * whose file this agent reads whole declares none and is body alone.
+ *
+ * A document carries what it is called, since that is part of what it is, and
+ * the kind of primitive it was compiled from. Where it goes is its agent's
+ * projection's (CORE-FR-221).
+ */
+declare abstract class DocumentBasedComponent<Headers extends object = NoHeaders> extends ProviderComponent {
+    /** What this agent calls this one: the charter id with the `/` a filename
+     *  does not carry written `-`, so `acme/review` is `acme-review` (FR-141,
+     *  FR-171). Every document has one,
+     *  whether or not that agent reads it out of the frontmatter: it is what the
+     *  file is called. */
+    readonly name: string;
+    /** What this agent reads before the body, as the kind's own interface has
+     *  it. Typed by whichever kind this is, so nothing reads a field of one
+     *  kind's frontmatter off another's. */
+    readonly headers: Headers;
+    /** What the primitive says, with the mixins it pulls in already written
+     *  into it (FR-006). */
+    readonly body: string;
+    /** The file this agent reads: its frontmatter, its body, and the stamp
+     *  saying this engine wrote it. */
+    readonly document: StampedDocument;
+    constructor(agentProvider: AgentProvider, primitiveKind: string, 
+    /** What this agent calls this one: the charter id with the `/` a filename
+     *  does not carry written `-`, so `acme/review` is `acme-review` (FR-141,
+     *  FR-171). Every document has one,
+     *  whether or not that agent reads it out of the frontmatter: it is what the
+     *  file is called. */
+    name: string, 
+    /** What this agent reads before the body, as the kind's own interface has
+     *  it. Typed by whichever kind this is, so nothing reads a field of one
+     *  kind's frontmatter off another's. */
+    headers: Headers, 
+    /** What the primitive says, with the mixins it pulls in already written
+     *  into it (FR-006). */
+    body: string);
+}
+
+/**
+ * One file an agent reads as settings: JSON it shares with the repository, which
+ * this engine writes its own fields into and never over (FR-018, FR-146).
+ *
+ * No frontmatter, no body and no stamp: JSON has nowhere to carry one, and the
+ * file is the repository's as much as this engine's, so it is known by the
+ * part it plays instead.
+ */
+declare abstract class SettingBasedComponent<Settings extends object> extends ProviderComponent {
+    /** The fields this engine speaks for in that file. */
+    readonly settings: Settings;
+    constructor(agentProvider: AgentProvider, 
+    /** The part it plays, which is its id there: one such file to an agent. */
+    partId: string, 
+    /** The fields this engine speaks for in that file. */
+    settings: Settings);
+}
+
+/** One sensor as a build leaves it: its id, the signal it fires on, and the
+ *  command that runs, each script it names written as its built file (FR-169). */
+declare class BuiltSensor {
+    readonly id: string;
+    readonly signal: string;
+    readonly "agent-provider"?: readonly AgentProvider[];
+    readonly command: string;
+    constructor(builtSensor: BuiltSensor);
+}
+
+/** Every sensor the last build compiled, in order of id: what
+ *  `cw run sensor <signal> --agent <agent>` reads, since it reads no charter
+ *  (FR-179). */
+declare class BuiltSensors extends CharterOutputItem {
+    readonly sensors: readonly BuiltSensor[];
+    /** The one command an agent is given for a signal its charter's sensors fire
+     *  on, naming that agent: `cw` runs every one of them kept for it (FR-175). */
+    getRunCommand(signal: string, agentProvider: AgentProvider): string;
+    constructor(sensors: readonly BuiltSensor[]);
+    /** Select only sensors that support the agent raising the signal; with no
+     *  agent named, only the sensors kept for no agent (CORE-FR-233). */
+    filterForAgent(raisingAgentProvider: AgentProvider | undefined): BuiltSensors;
+    /** What it holds: generated, and the charter's alone. Indented, since it is
+     *  committed and read in diffs when a sensor's command changes. */
+    get text(): string;
+    /** Every signal at least one sensor names, each once, in the order the
+     *  sensors name them. */
+    get signals(): readonly string[];
+}
+
+/**
+ * What a charter holds, listed for whoever reads it (FR-011, FR-013).
+ *
+ * Output, not charter: nothing here was authored and nothing here is read back,
+ * and nothing here knows what a primitive is — reading one into an entry is the
+ * service's, and this is handed the list (plan §2.6).
+ *
+ * It says itself what it is and what it holds; where it lands is the
+ * projection's (CORE-FR-221).
+ *
+ * Ordered by id rather than by the order the files happened to be read, so
+ * the same charter catalogues byte for byte the same and a committed catalogue
+ * changes only when the charter does (SC-007).
+ *
+ * No bodies. What a primitive says is read from the file it names,
+ * when the thing it applies to comes up and not before (FR-013).
+ */
+declare class Catalogue extends CharterOutputItem {
+    readonly entries: readonly CatalogueEntry[];
+    readonly agentProvider?: AgentProvider | undefined;
+    /** Entries in the order they are to be listed: by id (SC-007). */
+    constructor(entries: readonly CatalogueEntry[], agentProvider?: AgentProvider | undefined);
+    /** What it holds: the charter's own. Indented, since it is committed and
+     *  read in diffs, and a listing whose entries land one per line says what
+     *  changed in the charter rather than that the listing changed. */
+    get text(): string;
+    /**
+     * The same listing, narrowed to the primitives of one kind (FR-011).
+     *
+     * A narrowed listing is a listing: what comes back answers `entries` the way
+     * this does, so whoever reads it never has to ask whether it was narrowed. Nothing is re-sorted — the entries keep the order they were
+     * put in, which is the order by id they were made in.
+     */
+    filterByKind(kind: string): Catalogue;
+}
+
+/**
+ * One primitive as the listing records it: what it is called, what it is for,
+ * the files it applies to, and the file its body is in (FR-011). Its kind and
+ * id are all it is known by, and every other header is read from that file.
+ *
+ * Globs nobody wrote are left out rather than recorded as nothing.
+ */
+declare class CatalogueEntry {
+    /** The agents it is listed for, or `all` where its primitive names none:
+     *  what splits the catalogues in memory; omitted from their JSON files. */
+    readonly agentProviders: "all" | readonly AgentProvider[];
+    readonly kind: string;
+    readonly id: string;
+    readonly description: string;
+    /** Where the body is: a link, under `$CW_OUT/`, to the compiled
+     *  primitive, in what a build writes; the authored file's uri, in what a
+     *  person is listed (FR-140). */
+    readonly file: string;
+    readonly globs?: readonly string[];
+    constructor(catalogueEntry: CatalogueEntry);
+}
+
+/**
+ * What an agent has to know before it reads anything else: that this repository
+ * is governed by a charter, where the charter's own listing of itself is, and
+ * when each kind is to be opened (FR-019).
+ *
+ * Orientation, and the few rules that are not worth the risk of being missed. A
+ * primitive's body is opened when its activation condition is met and not
+ * before, which is what the catalogue is for (FR-013) —
+ * so a charter of four hundred guides compiles to the same few paragraphs as a
+ * charter of four.
+ *
+ * The activation lines are read off the primitive classes, one per kind, each declaring
+ * its own beside the headers it requires, so what a kind is and when it is
+ * opened is said in one place (FR-001).
+ *
+ * It lands in the compiled output, beside the listing it sends a reader to by
+ * name. No charter here — it is handed the lines it writes, so what a kind is
+ * is asked of the charter once, by the caller.
+ *
+ * No primitive's body reaches here, not even a guide's: this file is
+ * orientation and the listings it sends a reader to. What every turn is to carry
+ * is each agent's to carry, in its own kinds.
+ */
+declare class CharterMd extends CharterOutputItem {
+    /** This file as a reader opens it: the stamp saying this engine wrote it,
+     *  and the orientation itself. */
+    private readonly stampedDocument;
+    constructor(
+    /** This file as a reader opens it: the stamp saying this engine wrote it,
+     *  and the orientation itself. */
+    stampedDocument: StampedDocument);
+    get text(): string;
+}
+
+/** One asset of a compiled primitive: its path in the primitive's folder,
+ *  what it holds, and whether it is run by its path (FR-160, FR-168). */
+declare class CompiledAsset {
+    readonly assetPath: string;
+    readonly contents: Uint8Array;
+    readonly isExecutable: boolean;
+    constructor(assetPath: string, contents: Uint8Array, isExecutable: boolean);
+}
+
+/**
+ * One primitive as an agent opens it: the headers its author wrote, and below
+ * them the whole of what it says — the bodies of the mixins it pulls in, then its
+ * own (FR-139) — with its assets beside it (FR-168).
+ *
+ * Every layer's primitive compiles to one of these, so what the catalogue sends
+ * an agent to is a file in the compiled output for all of them, the engine's own
+ * included. The document is handed in whole: reading a primitive into it is the
+ * compiler's. Where it and its assets land is the projection's (CORE-FR-221).
+ */
+declare class CompiledPrimitive extends CharterOutputItem {
+    /** The kind of the primitive it was compiled from. */
+    readonly kind: string;
+    /** That primitive's id: `team/review`. */
+    readonly id: string;
+    /** What its document holds, stamped with where to change it instead. */
+    private readonly stampedDocument;
+    /** Its assets, laid beside its document: the path each has in its
+     *  folder, what it holds, and whether it is run by its path — the one a
+     *  script says to run (FR-160, FR-168). */
+    readonly assets: readonly CompiledAsset[];
+    constructor(
+    /** The kind of the primitive it was compiled from. */
+    kind: string, 
+    /** That primitive's id: `team/review`. */
+    id: string, 
+    /** What its document holds, stamped with where to change it instead. */
+    stampedDocument: StampedDocument, 
+    /** Its assets, laid beside its document: the path each has in its
+     *  folder, what it holds, and whether it is run by its path — the one a
+     *  script says to run (FR-160, FR-168). */
+    assets?: readonly CompiledAsset[]);
+    /** Its document as an agent opens it: generated, and the charter's alone
+     *  (FR-140). */
+    get text(): string;
+}
+
+/** The ways a developer may sign in to an mcp origin (FR-142): what an `mcp`
+ *  primitive declares, and what the list of mcp origins carries for each address.
+ *  Shared by the charter and the output, as the agent providers are. */
+declare const MCP_AUTH_METHOD_NAMES: readonly ["oauth", "token"];
+
+/** One of them, as a primitive's headers and the list of mcp origins write it. */
+type McpAuthMethodName = (typeof MCP_AUTH_METHOD_NAMES)[number];
+
+/** One way a developer signs in to an mcp origin: a value, one per name. */
+declare class McpAuthMethod {
+    readonly name: McpAuthMethodName;
+    static readonly OAUTH: McpAuthMethod;
+    static readonly TOKEN: McpAuthMethod;
+    private constructor();
+    /** The way this name writes, as a primitive's headers, a DTO or a kept
+     *  credential write it. */
+    static of(methodName: McpAuthMethodName): McpAuthMethod;
+    toString(): McpAuthMethodName;
+    /** Written as its name, wherever a model holding it is written as JSON. */
+    toJSON(): McpAuthMethodName;
+    /** Every name, in the order they are offered. */
+    static get names(): typeof MCP_AUTH_METHOD_NAMES;
+}
+
+/** One tool as an mcp origin lists it: its name, what it does, and what it takes. */
+declare class McpToolDefinition {
+    readonly name: string;
+    readonly description: string;
+    readonly inputSchema: Readonly<Record<string, unknown>>;
+    constructor(name: string, description: string, inputSchema: Readonly<Record<string, unknown>>);
+}
+
+/**
+ * One address and `path`, once, however many mcps declare it (FR-145).
+ *
+ * Where an mcp origin is, how a developer signs in to it, and the tools it listed
+ * when the build reached it: which of them each mcp there lets the agent use is
+ * its own, and the catalogue already lists every mcp. Keyed by where it is rather than by what it is called, because the
+ * repository and an installed charter may call one mcp origin by two names.
+ */
+declare class McpOrigin {
+    /** Every mcp at this address and path, sorted. */
+    readonly ids: readonly string[];
+    /** The name each of those ids is served under, its tools as
+     *  `<name>__<tool>`: made once, by the build that wrote the bodies naming
+     *  it, so the server reads it rather than making it again (FR-145). */
+    readonly names: Readonly<Record<string, string>>;
+    readonly address: string;
+    readonly endpoint?: string;
+    readonly command?: {
+        readonly command: string;
+        readonly args: readonly string[];
+        readonly tokenEnv?: string;
+    };
+    readonly path?: string;
+    /** Every way any mcp here lets a developer sign in. */
+    readonly auth: readonly McpAuthMethod[];
+    /** Each tool an mcp here declares, as the mcp origin listed it when the build
+     *  reached it, by name: what the server lists without reaching the mcp origin
+     *  (EVAL-FR-031). None in a list written before it was kept. */
+    readonly tools?: readonly McpToolDefinition[];
+    constructor(mcpOrigin: McpOrigin);
+}
+
+/** Every mcp origin the charter's mcps reach, each once: what `cw run mcp` and
+ *  `cw mcp auth` read, since neither reads a charter (FR-145). Ordered by
+ *  address, then path (SC-007). */
+declare class McpOrigins extends CharterOutputItem {
+    readonly origins: readonly McpOrigin[];
+    constructor(origins: readonly McpOrigin[]);
+    /** What it holds: generated, and the charter's alone. Indented, since it is
+     *  committed and read in diffs when a mcp origin moves (SC-038). */
+    get text(): string;
+}
+
+/**
+ * DRIVEN PORT — what one agent reads of a charter, and where: the files it
+ * reads and how each goes over what is there, its own links in them, and
+ * what of them it holds in its main context (FR-018, CORE-FR-221). The engine
+ * hands it the charter and what the charter compiles to, whose paths are
+ * under `$CW_OUT/`, and knows no agent: one is taught to the engine by
+ * handing its application one more of these, under the agent's name.
+ */
+interface ForManagingLocalAgentOutput {
+    /** The same agent's files, laid onto another checkout of the repository,
+     *  such as a worktree, by the folder the checkout was made in, in this
+     *  adapter's words. */
+    createCheckoutProjection(checkoutFolder: string): ForManagingLocalAgentOutput;
+    /**
+     * What laying this agent's files would do, decided and not yet done
+     * (FR-020, FR-022): each place it would write, with what it would hold and
+     * what it holds now, each place the last build left for it that this one
+     * would take away or write again, and what it could not lay as the charter
+     * says. Reads, and only reads.
+     */
+    createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan>;
+    /** What this agent puts into its main context of the charter, each text as
+     *  it lays it (EVAL-FR-001, EVAL-FR-003). */
+    listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
+    /** How many of this agent's tokens one token of the tokenizer on this
+     *  machine stands for: what an estimate is scaled by (EVAL-SC-002). */
+    readonly tokenFactor: number;
+}
+
+/**
+ * What every agent's projection onto a repository's files does the same way:
+ * each of the agent's files planned at its place over what is there now, each
+ * stamped file the last build left in the agent's own folders taken away
+ * where this one writes it no more, and the paths into the compiled output in
+ * each written from where the file lands (FR-018, FR-020, CORE-FR-221). What
+ * the files are, where each lands and how it goes over what is there is each
+ * agent's own.
+ */
+declare abstract class AgentProjection implements ForManagingLocalAgentOutput {
+    protected readonly fileReader: ForReadingFiles;
+    /** The checkout of the repository this agent's files are laid in, such as
+     *  a worktree, by its path from the repository; none for the repository's own. */
+    protected readonly checkoutFolder: string;
+    constructor(fileReader: ForReadingFiles, checkoutFolder?: string);
+    /** The same projection over another checkout: each agent's builds itself,
+     *  and refuses to build a class extending it, which builds itself in turn
+     *  (EVAL-FR-021). */
+    abstract createCheckoutProjection(checkoutFolder: string): ForManagingLocalAgentOutput;
+    abstract readonly tokenFactor: number;
+    /** The folders only this agent's files are in: every stamped file a build
+     *  left there is the build's to take away (FR-020). */
+    protected abstract readonly ownedFolders: readonly string[];
+    /** Every file this agent reads of the charter (FR-018). */
+    protected abstract listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
+    /** Where one of this agent's files lands, from the repository's root. */
+    protected abstract findComponentPlace(component: ProviderComponent): string;
+    abstract listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
+    /** What a file is once this build's part is written over `currentText`,
+     *  what is there now: the charter's part alone, where the file is the
+     *  charter's. */
+    protected mergeComponentContents(_component: ProviderComponent, laidText: string, _currentText: string | undefined, _place: string): string;
+    /** What else the last build left for this agent outside its own folders,
+     *  each with what to write back where it is the repository's too. */
+    protected planOtherCleanup(_checkoutFolder: string): Promise<readonly WritePlan[]>;
+    createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan>;
+}
+
+/**
+ * DRIVEN ADAPTER: a charter projected onto Claude Code — its rules, skills,
+ * subagents, settings and MCP configuration under the folders it reads, and
+ * the charter's section of `CLAUDE.md` (FR-018, FR-051, CORE-FR-221).
+ *
+ * How a file goes over what is there is decided by its kind. A file the
+ * charter owns is replaced. The settings and the MCP configuration, which the
+ * charter shares with the repository, are merged into: the fields the charter
+ * speaks for are its, and every other is left as it was (FR-018). And the
+ * entry file, which is the repository's, has the charter's section written in
+ * place (FR-051).
+ */
+declare class ClaudeProjection extends AgentProjection {
+    readonly tokenFactor = 1.43;
+    protected readonly ownedFolders: string[];
+    /** This projection over a checkout. A class extending it is refused, never
+     *  built as this one: it builds itself over the checkout, by its own
+     *  constructor (EVAL-FR-021). */
+    createCheckoutProjection(checkoutFolder: string): ClaudeProjection;
+    protected listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
+    protected findComponentPlace(component: ProviderComponent): string;
+    protected mergeComponentContents(component: ProviderComponent, laidText: string, currentText: string | undefined): string;
+    listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
+}
+
+/**
+ * DRIVEN ADAPTER: a charter projected onto Codex — its skills, subagents,
+ * command rules and configuration under the folders it reads, and the
+ * charter's section of `AGENTS.md`, at the repository's root and in each
+ * folder a guide's globs name (FR-018, FR-051, CORE-FR-221).
+ *
+ * How a file goes over what is there is decided by its kind. A file the
+ * charter owns is replaced; the configuration, which the charter shares with
+ * the repository, is merged into, every table the charter does not speak for
+ * left as it was (FR-018); and an entry file, which is the repository's, has
+ * the charter's section written in place (FR-051).
+ */
+declare class CodexProjection extends AgentProjection {
+    readonly tokenFactor = 1;
+    protected readonly ownedFolders: string[];
+    /** This projection over a checkout. A class extending it is refused, never
+     *  built as this one: it builds itself over the checkout, by its own
+     *  constructor (EVAL-FR-021). */
+    createCheckoutProjection(checkoutFolder: string): CodexProjection;
+    protected listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
+    protected findComponentPlace(component: ProviderComponent): string;
+    protected mergeComponentContents(component: ProviderComponent, laidText: string, currentText: string | undefined, place: string): string;
+    /** Every nested entry file carrying the stamp, each with the text that is
+     *  the repository's own where some is: a stamped section does not make the
+     *  text around it the build's (FR-020). Only folders are walked, not every
+     *  file of the repository read. */
+    protected planOtherCleanup(checkoutFolder: string): Promise<readonly WritePlan[]>;
+    listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
+}
+
+/** One charter of primitives as its store keeps it, before the engine reads
+ *  it: its name, the text of its `cw-package.json` where it holds one, and
+ *  where it and that file are kept, said back and never read
+ *  (VENDOR-FR-009, VENDOR-FR-010). */
+declare class RawCharterMetadata {
+    readonly name: string;
+    readonly installedCharterRecordText: string | undefined;
+    readonly uri: string;
+    readonly installedCharterRecordUri: string;
+    constructor(name: string, installedCharterRecordText: string | undefined, uri: string, installedCharterRecordUri: string);
+}
+
+/** What a `cw-package.json` holds: the charter, the source and the version,
+ *  each a string (VENDOR-FR-010). Whatever else it holds is left unread. */
+declare const InstalledCharterRecordSchema: z.ZodObject<{
+    charter: z.ZodString;
+    source: z.ZodString;
+    version: z.ZodString;
+}, z.core.$strip>;
+
+/** Where an installed charter came from, as its `cw-package.json` says: the
+ *  charter's name in its source, the source as it was typed, and the version
+ *  installed (VENDOR-FR-010, VENDOR-FR-017). */
+declare class InstalledCharterRecord {
+    readonly charterName: string;
+    readonly source: string;
+    readonly version: string;
+    static get schema(): typeof InstalledCharterRecordSchema;
+    constructor(charterName: string, source: string, version: string);
+    /** What a `cw-package.json` holds of it. */
+    toJSON(): z.infer<typeof InstalledCharterRecordSchema>;
+}
+
+/** One primitive as it is handed in, raw — kept, or answered by an author —
+ *  before the engine reads it: its layer, the kind and id it is kept under, its index.md as text or as
+ *  the bytes kept, every file kept with it (FR-168), and where it is kept, in
+ *  that keeper's own scheme. The engine reads the text and checks it against
+ *  the kind and id; it never reads the uri, which it only says back
+ *  (CORE-FR-213). */
+declare class RawPrimitive {
+    readonly layer: PrimitiveLayer;
+    readonly kind: string;
+    readonly id: string;
+    /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
+     *  the headers and body an author answered, where no file is written yet
+     *  (FR-011). */
+    readonly contents: string | Uint8Array | {
+        readonly headers: Readonly<Record<string, unknown>>;
+        readonly body: string;
+    };
+    readonly assets: readonly AssetFile[];
+    readonly uri: string;
+    /** Whether it is kept as a primitive is, apart with its assets: a
+     *  markdown file kept on its own is how an earlier version kept one
+     *  (FR-141). */
+    readonly isKeptApart: boolean;
+    /** Where its keeper would keep a primitive of this kind and id, as the
+     *  uri of its folder, for a fault to say where to move it (FR-141); the
+     *  engine says it back and never reads it. */
+    readonly folderUriOf?: ((kind: string, id: string) => string) | undefined;
+    constructor(layer: PrimitiveLayer, kind: string, id: string, 
+    /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
+     *  the headers and body an author answered, where no file is written yet
+     *  (FR-011). */
+    contents: string | Uint8Array | {
+        readonly headers: Readonly<Record<string, unknown>>;
+        readonly body: string;
+    }, assets: readonly AssetFile[], uri: string, 
+    /** Whether it is kept as a primitive is, apart with its assets: a
+     *  markdown file kept on its own is how an earlier version kept one
+     *  (FR-141). */
+    isKeptApart?: boolean, 
+    /** Where its keeper would keep a primitive of this kind and id, as the
+     *  uri of its folder, for a fault to say where to move it (FR-141); the
+     *  engine says it back and never reads it. */
+    folderUriOf?: ((kind: string, id: string) => string) | undefined);
+    /** Its index.md as text, a leading BOM kept as a file read as text keeps it
+     *  (CORE-FR-207). */
+    get text(): string;
+}
+
+/** One charter a source keeps, `.cw/charter/<charter>/`, named by its folder,
+ *  authored there or installed there alike, as one commit of it was fetched
+ *  and read (VENDOR-FR-017, VENDOR-FR-019): its primitives as the source keeps
+ *  them, what tells which other charters it includes (VENDOR-FR-018).
+ *  `commit` is what was fetched, for what fetched it alone to read again;
+ *  `commitId` is its id in version control. `sourceFolder` is where it sits
+ *  in the source, for what copies it. */
+declare class CharterSource {
+    readonly commit: string;
+    readonly commitId: string;
+    readonly name: string;
+    readonly rawPrimitives: readonly RawPrimitive[];
+    readonly sourceFolder: string;
+    /** The folders of it that are copied, by their paths in it: each
+     *  primitive's, and those of its test cases and eval cases. */
+    readonly keptFolderPaths: readonly string[];
+    constructor(commit: string, commitId: string, name: string, rawPrimitives: readonly RawPrimitive[], sourceFolder: string, 
+    /** The folders of it that are copied, by their paths in it: each
+     *  primitive's, and those of its test cases and eval cases. */
+    keptFolderPaths: readonly string[]);
+    /** The description one of its primitives declares, empty where it
+     *  declares none. Shown, never refused: the charter is installed whole, as
+     *  its source holds it (VENDOR-FR-017). */
+    descriptionOf(rawPrimitive: RawPrimitive): string;
+}
+
+/** Where a charter this repository installs rather than authors comes from:
+ *  the source as it was typed, handed to version control as it is (FR-049,
+ *  FR-050). */
+declare class CharterSourceOrigin {
+    readonly sourceUri: string;
+    constructor(sourceUri: string);
+}
+
+/** One charter a source's pull or fork puts in the repository, every
+ *  refusal settled: the name it is held under here; the source's charter
+ *  copied into it; and what its `cw-package.json` says once it is down, written
+ *  on this machine, or none for a charter the repository now owns
+ *  (VENDOR-FR-017 to VENDOR-FR-022). What the name held before is replaced
+ *  whole. */
+declare class CharterInstall {
+    readonly charterName: string;
+    readonly charterSource: CharterSource;
+    readonly installedCharterRecord: InstalledCharterRecord | undefined;
+    constructor(charterName: string, charterSource: CharterSource, installedCharterRecord: InstalledCharterRecord | undefined);
+}
+
+/**
+ * What one evaluation case may say (EVAL-FR-020): a prompt put to the agent,
+ * and what is expected of it — a skill invoked, a guide followed, at most a
+ * number of tokens, or a file read — at least one expectation.
+ */
+declare const EvalCaseSchema: z.ZodObject<{
+    prompt: z.ZodString;
+    expect: z.ZodObject<{
+        invoke: z.ZodOptional<z.ZodString>;
+        follow: z.ZodOptional<z.ZodString>;
+        read: z.ZodOptional<z.ZodString>;
+        maxTokens: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+
+/** One case of an evaluation file, as `EvalCaseSchema` read it: the prompt
+ *  put to the agent and what is expected of it. A value the suite holds, made
+ *  where the suite is read and by nothing else. */
+declare class EvalCase {
+    readonly prompt: string;
+    readonly expect: z.infer<typeof EvalCaseSchema>["expect"];
+    constructor(evalCase: Pick<EvalCase, "prompt" | "expect">);
+    static get schema(): typeof EvalCaseSchema;
+}
+
+/** What an evaluation file may hold: what it is about, and its cases. JSON, as
+ *  a test file is: nothing reads it but `cw eval`. Not a primitive
+ *  (EVAL-FR-020). */
+declare const EvalSuiteSchema: z.ZodObject<{
+    description: z.ZodOptional<z.ZodString>;
+    cases: z.ZodArray<z.ZodPipe<z.ZodObject<{
+        prompt: z.ZodString;
+        expect: z.ZodObject<{
+            invoke: z.ZodOptional<z.ZodString>;
+            follow: z.ZodOptional<z.ZodString>;
+            read: z.ZodOptional<z.ZodString>;
+            maxTokens: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodTransform<EvalCase, {
+        prompt: string;
+        expect: {
+            invoke?: string | undefined;
+            follow?: string | undefined;
+            read?: string | undefined;
+            maxTokens?: number | undefined;
+        };
+    }>>>;
+}, z.core.$strict>;
+
+/** One evaluation file, as `EvalSuiteSchema` read it: what it is about, the
+ *  cases it evaluates, and the body it was read from, as its author wrote it. Made by `EvalSuiteFactory.create` and by nothing
+ *  else. */
+declare class EvalSuite {
+    readonly description: string | undefined;
+    readonly cases: readonly EvalCase[];
+    readonly body: string;
+    static get schema(): typeof EvalSuiteSchema;
+    static get defaultBody(): typeof DEFAULT_EVAL_SUITE_BODY;
+    constructor(description: string | undefined, cases: readonly EvalCase[], body: string);
+}
+
+/** What a new evaluation file holds: one case that reads, so its author edits
+ *  rather than looks the format up, as a new test file does (FR-091). */
+declare const DEFAULT_EVAL_SUITE_BODY: string;
+
+/** One file of evaluation cases as what keeps them keeps it, before the
+ *  engine reads it: the name it is reported under, what it holds, and where it
+ *  is kept, said back and never read (CORE-FR-213). */
+declare class RawEvalSuite {
+    readonly name: string;
+    /** The charter it is kept in (VENDOR-FR-009). */
+    readonly charterName: string;
+    readonly text: string;
+    readonly uri: string;
+    constructor(name: string, 
+    /** The charter it is kept in (VENDOR-FR-009). */
+    charterName: string, text: string, uri: string);
+}
+
+/** One suite of self-regression tests as what keeps them keeps it, before the
+ *  engine reads it: the name it is asked for by (`untitled-1.json`, FR-124),
+ *  what it holds, and where it is kept, said back and never read
+ *  (CORE-FR-213). */
+declare class RawTestSuite {
+    readonly name: string;
+    /** The charter it is kept in (VENDOR-FR-009). */
+    readonly charterName: string;
+    readonly text: string;
+    readonly uri: string;
+    constructor(name: string, 
+    /** The charter it is kept in (VENDOR-FR-009). */
+    charterName: string, text: string, uri: string);
+}
+
+/**
+ * What a case may say (FR-047).
+ *
+ * Three shapes, and only three, because only three things about a charter are
+ * decided without an agent: a touched file matches a guide's globs, a raised
+ * event is the one a sensor names, and a touched file is denied by a posture.
+ * Everything else a charter holds — which skill a request wants, which agent
+ * gets delegated to — is the agent's reading of words and not this engine's, so
+ * it is not something a test here can assert (FR-049).
+ *
+ * A primitive is named by its id, the way the whole charter names one
+ * (FR-172) — checked here against what an author typed rather than against
+ * what a primitive declared. Every object is strict, and that is what closes the
+ * set: a case holding both a `do` and a `when` is no branch of this union, and
+ * neither is one raising an event and expecting a permission — an event touches no file for the charter
+ * to allow or refuse. So the shapes nothing could ever answer do not exist to
+ * be handled.
+ */
+declare const TestCaseSchema: z.ZodUnion<readonly [z.ZodObject<{
+    do: z.ZodObject<{
+        touchFile: z.ZodString;
+    }, z.core.$strict>;
+    expect: z.ZodUnion<readonly [z.ZodObject<{
+        activate: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        allow: z.ZodBoolean;
+    }, z.core.$strict>]>;
+}, z.core.$strict>, z.ZodObject<{
+    when: z.ZodEnum<{
+        PreToolUse: "PreToolUse";
+        PostToolUse: "PostToolUse";
+        UserPromptSubmit: "UserPromptSubmit";
+        Stop: "Stop";
+        SubagentStop: "SubagentStop";
+        PreCompact: "PreCompact";
+        SessionStart: "SessionStart";
+        SessionEnd: "SessionEnd";
+        PermissionRequest: "PermissionRequest";
+        SubagentStart: "SubagentStart";
+        PostCompact: "PostCompact";
+    }>;
+    expect: z.ZodObject<{
+        run: z.ZodString;
+    }, z.core.$strict>;
+}, z.core.$strict>]>;
+
+/**
+ * One situation a test pins down, and what the charter is expected to make of
+ * it (FR-047).
+ *
+ * A class rather than the record the schema read, because two things are asked
+ * of a case wherever one turns up — the situation it puts, which a run reports
+ * it under, and the id it names, which an explanation finds it by
+ * (FR-014, FR-048) — and neither is worth working out from the three shapes
+ * twice. Every case the schema reads is made one, so nothing downstream meets
+ * the record on its own.
+ *
+ * What was written is kept as it was read: which of the three shapes a case is
+ * decides how it resolves, and that is the resolver's question to ask of it.
+ */
+declare class TestCase {
+    readonly writtenCase: z.infer<typeof TestCaseSchema>;
+    static get schema(): typeof TestCaseSchema;
+    constructor(writtenCase: z.infer<typeof TestCaseSchema>);
+    /** The situation it puts, said as a line, and what it expects of it: what a
+     *  run reports it under, and what an explanation names it by (FR-048,
+     *  FR-014). */
+    describeCase(): string;
+    /** The situation it puts: the file it touches, or the event it raises. */
+    get situation(): string;
+    /** What it expects the charter to make of its situation. */
+    get expectation(): string;
+    /**
+     * Which primitive this case expects to be activated: the sensor a raised event
+     * is expected to run, or the guide a touched file is expected to bring up
+     * (FR-014).
+     *
+     * Nothing for the third shape. That one expects a touched file to be allowed
+     * or denied, which every posture in the charter answers between them, so it
+     * activates no one primitive by name.
+     */
+    get activatedId(): string | undefined;
+}
+
+/**
+ * What a test file may hold, as the one shape everything else reads it through
+ * (FR-047).
+ *
+ * Not a primitive, and nothing compiles it. A charter is what an agent is
+ * instructed by; this is what says the charter still does what it did, so it
+ * lives beside the charter rather than in it and is read only when tests run.
+ * That is why it is JSON and not a document with frontmatter: nobody reads it
+ * but `cw test`, and there is no body for an agent to open.
+ */
+declare const TestSuiteSchema: z.ZodObject<{
+    description: z.ZodOptional<z.ZodString>;
+    cases: z.ZodArray<z.ZodPipe<z.ZodUnion<readonly [z.ZodObject<{
+        do: z.ZodObject<{
+            touchFile: z.ZodString;
+        }, z.core.$strict>;
+        expect: z.ZodUnion<readonly [z.ZodObject<{
+            activate: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            allow: z.ZodBoolean;
+        }, z.core.$strict>]>;
+    }, z.core.$strict>, z.ZodObject<{
+        when: z.ZodEnum<{
+            PreToolUse: "PreToolUse";
+            PostToolUse: "PostToolUse";
+            UserPromptSubmit: "UserPromptSubmit";
+            Stop: "Stop";
+            SubagentStop: "SubagentStop";
+            PreCompact: "PreCompact";
+            SessionStart: "SessionStart";
+            SessionEnd: "SessionEnd";
+            PermissionRequest: "PermissionRequest";
+            SubagentStart: "SubagentStart";
+            PostCompact: "PostCompact";
+        }>;
+        expect: z.ZodObject<{
+            run: z.ZodString;
+        }, z.core.$strict>;
+    }, z.core.$strict>]>, z.ZodTransform<TestCase, {
+        do: {
+            touchFile: string;
+        };
+        expect: {
+            activate: string;
+        } | {
+            allow: boolean;
+        };
+    } | {
+        when: "PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "Stop" | "SubagentStop" | "PreCompact" | "SessionStart" | "SessionEnd" | "PermissionRequest" | "SubagentStart" | "PostCompact";
+        expect: {
+            run: string;
+        };
+    }>>>;
+}, z.core.$strict>;
+
+/** One test file, as `TestSuiteSchema` read it (FR-047): what it is about, the
+ *  cases it pins down, and the body it was read from, as its author wrote it
+ *  and the editor shows it (FR-124). Made by `TestSuiteFactory.create` and by
+ *  nothing else. */
+declare class TestSuite {
+    readonly description: string | undefined;
+    readonly cases: readonly TestCase[];
+    readonly body: string;
+    static get schema(): typeof TestSuiteSchema;
+    static get defaultBody(): typeof DEFAULT_TEST_SUITE_BODY;
+    /** A suite that reads, said on one line: what a file the schema refused is
+     *  shown. */
+    static get sampleText(): typeof SAMPLE;
+    constructor(description: string | undefined, cases: readonly TestCase[], body: string);
+}
+
+declare const SAMPLE: string;
+
+/** What a new test file holds: a description and the first case of the sample,
+ *  so it reads as a suite from the start and its author edits rather than
+ *  looks the format up (FR-091). */
+declare const DEFAULT_TEST_SUITE_BODY: string;
+
+/** What an adapter answering this port raises when git refuses, named again
+ *  here so it names this port and nothing behind it. */
+
+/**
+ * DRIVEN PORT — reaching a source. How it is answered — a git command today, a
+ * library or a test's own answer tomorrow — is the adapter's business.
+ *
+ * The folder a source lands in need not be a repository: nothing here needs a
+ * repository, and nothing here writes to one (CORE-FR-205).
+ */
+interface ForFetchingCharterSources {
+    /**
+     * Fetch this source, at this version where one is named, and answer the
+     * commit fetched: what the other questions about a source are asked of, so it
+     * is fetched once. Its text is the adapter's own, for this port alone to
+     * read. Nothing in the repository is touched; it is only what a relative source is
+     * read from, and whose own version control settings reach it, where it has
+     * any. Whoever fetched it says `removeFetchedCommit` when done.
+     *
+     * A source that cannot be reached, a version that is not there, and a machine
+     * that cannot fetch at all each raise an `AdapterFault` saying so
+     * (CORE-FR-205).
+     */
+    fetchCommit(source: string, version?: string): Promise<string>;
+    /** The id version control gives this fetched commit, its hash: what a
+     *  charter installed with no version asked for records as its version
+     *  (VENDOR-FR-017). */
+    findCommitId(commit: string): Promise<string>;
+    /** Every file this fetched commit holds, by its path in it, at any depth, in
+     *  no promised order. */
+    listFilesAt(commit: string): Promise<readonly string[]>;
+    /** What one file of this fetched commit holds, as text. */
+    readFileAt(commit: string, path: string): Promise<string>;
+    /** What one file of this fetched commit holds, as the bytes it holds, never
+     *  decoded (CORE-FR-208). */
+    readBytesAt(commit: string, path: string): Promise<Uint8Array>;
+    /**
+     * Put one folder of this fetched commit — every file under it, at any depth —
+     * at this folder of this repository, replacing whatever that folder held and
+     * nothing beside it. The empty path is the commit's root. Nothing is staged
+     * and nothing is committed: what lands is left in the working tree for the
+     * user to read, whatever else is in hand (CORE-FR-052, CORE-FR-042).
+     */
+    checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
+    /** This fetched commit let go, with all the adapter kept to answer for it;
+     *  nothing is asked of it afterwards. */
+    removeFetchedCommit(commit: string): Promise<void>;
+}
+
+/** Keeps a repository's charter, wherever it keeps it, and knows how: its
+ *  primitives, the charters it installed, its test cases and its eval cases,
+ *  through this one port (CORE-FR-228), and reads back what the last build
+ *  laid of it, each item known by its path inside the output, never by
+ *  where the output lands (CORE-FR-221). Where a primitive, an asset of one,
+ *  an installed charter or a suite sits is its own to know, never the
+ *  engine's, which knows a primitive by its layer, kind and id and a suite
+ *  by its name (CORE-FR-213). */
+interface ForManagingCharter {
+    /** Every primitive kept of the repository's charter, each with its assets,
+     *  in the layer of the charter it is kept in: authored, or installed where the
+     *  charter holds where it came from (VENDOR-FR-009, VENDOR-FR-010). */
+    loadCharter(): Promise<readonly RawPrimitive[]>;
+    /** Every charter kept, each with what it holds of where it came from where it
+     *  was installed (VENDOR-FR-009, VENDOR-FR-010). */
+    loadCharterMetadata(): Promise<readonly RawCharterMetadata[]>;
+    /** A place laid out for the charter root's charters, holding none: what a
+     *  repository is set up with (FR-057, VENDOR-FR-013). */
+    createCharter(): Promise<void>;
+    /** One new primitive of the repository's own layer kept, with its assets
+     *  where none stands there already, and a file already in its folder left
+     *  as one of them; its uri. Refused, with nothing written, where it is kept
+     *  already, would be kept inside another or around it, or would land outside
+     *  the charter (FR-167, CORE-FR-044). Handed the primitive as authored, which
+     *  is kept nowhere yet. */
+    addPrimitive(primitive: Primitive): Promise<string>;
+    /** Refused where the repository is laid out in a way this store no longer
+     *  keeps, naming what moves it (CORE-FR-226). */
+    assertLayout(): Promise<void>;
+    /** Where the repository's own layer is kept, said back and never read. */
+    findCharterUri(): string;
+    /** Where an author edits the charter, in this keeper's words, from the
+     *  repository's root where it keeps it there: what each agent is told to
+     *  edit, said back and never read (SDK-FR-020). */
+    describeCharterPlace(): string;
+    /** One primitive of the repository's own layer kept over what it was, its
+     *  assets as they are (FR-075). */
+    rewritePrimitive(primitive: Primitive): Promise<void>;
+    /** One primitive of the repository's own layer taken away, with its assets,
+     *  and nothing else (FR-076, FR-167). */
+    removePrimitive(primitive: Primitive): Promise<void>;
+    /** One commit of this source, at this version where one is named, fetched
+     *  and read: each charter it keeps (VENDOR-FR-017). Whoever asked says
+     *  `removeFetchedSources` once done; where it keeps none, what was fetched
+     *  is already removed. A source that cannot be reached raises an
+     *  `AdapterFault` saying so. */
+    fetchCharterSources(charterSourceOrigin: CharterSourceOrigin, version?: string): Promise<readonly CharterSource[]>;
+    /** The temporary folders these charters were fetched into, removed with all
+     *  they hold. */
+    removeFetchedSources(charterSources: readonly CharterSource[]): Promise<void>;
+    /** Each charter of a source fetched put in the repository as planned: what
+     *  its name held taken away whole, the folders of the source's charter
+     *  copied in as the source holds them, and its `cw-package.json` written, or
+     *  taken away where it keeps none (VENDOR-FR-017 to VENDOR-FR-022). Nothing
+     *  is staged and nothing committed. */
+    storeCharters(charterInstalls: readonly CharterInstall[]): Promise<void>;
+    /** Where a charter of this name is kept, in this keeper's words: said back,
+     *  never read. */
+    findCharterFolderUri(charterName: string): string;
+    /** An empty charter of this name kept, the repository's own
+     *  (VENDOR-FR-029). */
+    addCharter(charterName: string): Promise<void>;
+    /** The charter of this name taken away whole (VENDOR-FR-021, VENDOR-FR-031). */
+    removeCharter(charterName: string): Promise<void>;
+    /** Every test suite kept, by its name in its charter and that charter, with
+     *  what it holds (VENDOR-FR-009). */
+    loadTestSuites(): Promise<readonly RawTestSuite[]>;
+    /** One test suite kept under this name in this charter, as its author wrote it, over
+     *  whatever it held. */
+    writeTestSuite(charterName: string, name: string, testSuite: TestSuite): Promise<void>;
+    /** The test suite kept under this name in this charter taken away. */
+    removeTestSuite(charterName: string, name: string): Promise<void>;
+    /** Every file of evaluation cases kept, by its name in its charter and that
+     *  charter, with what it holds (VENDOR-FR-009). */
+    loadEvalSuites(): Promise<readonly RawEvalSuite[]>;
+    /** One file of evaluation cases kept under this name in this charter, as its author wrote
+     *  it, over whatever it held. */
+    writeEvalSuite(charterName: string, name: string, evalSuite: EvalSuite): Promise<void>;
+    /** The file of evaluation cases kept under this name in this charter taken away. */
+    removeEvalSuite(charterName: string, name: string): Promise<void>;
+    /** The text a build laid for the item at this path inside its output, as
+     *  it was laid; nothing where none was. */
+    readCompiledOutputItem(itemPath: string): Promise<string | undefined>;
+    /** Where the item at this path inside the output is laid, in this keeper's
+     *  words: said back where a message names it, and never read. */
+    describeItemPlace(itemPath: string): string;
+    /** A text the last build laid, each path into its output — `$CW_OUT/` and
+     *  the path inside it — written as where this keeper laid the output, as a
+     *  command of it is run (CORE-FR-221). */
+    resolveOutputLinks(laidText: string): string;
+}
+
+/**
+ * Keeps a charter as files, all of it through the one port (CORE-FR-228),
+ * under `.cw/charter/` (CORE-FR-224, VENDOR-FR-009): one folder per
+ * charter, `<charter>/`, holding its primitives, `primitive/<kind>/<id>/`, each index.md
+ * and its assets; its test cases under `test/` and its eval cases under
+ * `eval/`, a JSON file each; and, where it was installed, its
+ * `cw-package.json` (VENDOR-FR-010). A source is read as cw lays one out: its
+ * charters as a repository keeps its own (VENDOR-FR-017).
+ *
+ * A repository laid out the old way — its kinds right under `.cw/charter/` or
+ * `.cw/charter/primitive/`, its tests, eval cases and installed charters right under
+ * `.cw/` or `.cw/charter/` — is refused by every operation, and so is a source
+ * laid out that way, naming the skill that moves it (CORE-FR-226,
+ * VENDOR-FR-011).
+ */
+declare class FileCharterRepository implements ForManagingCharter {
+    #private;
+    constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, sourceFetcher: ForFetchingCharterSources);
+    loadCharter(): Promise<readonly RawPrimitive[]>;
+    loadCharterMetadata(): Promise<readonly RawCharterMetadata[]>;
+    createCharter(): Promise<void>;
+    addPrimitive(primitive: Primitive): Promise<string>;
+    assertLayout(): Promise<void>;
+    describeCharterPlace(): string;
+    findCharterUri(): string;
+    rewritePrimitive(primitive: Primitive): Promise<void>;
+    removePrimitive(primitive: Primitive): Promise<void>;
+    fetchCharterSources(charterSourceOrigin: CharterSourceOrigin, version?: string): Promise<readonly CharterSource[]>;
+    removeFetchedSources(charterSources: readonly CharterSource[]): Promise<void>;
+    storeCharters(charterInstalls: readonly CharterInstall[]): Promise<void>;
+    findCharterFolderUri(charterName: string): string;
+    addCharter(charterName: string): Promise<void>;
+    removeCharter(charterName: string): Promise<void>;
+    loadTestSuites(): Promise<readonly RawTestSuite[]>;
+    writeTestSuite(charterName: string, name: string, testSuite: TestSuite): Promise<void>;
+    removeTestSuite(charterName: string, name: string): Promise<void>;
+    loadEvalSuites(): Promise<readonly RawEvalSuite[]>;
+    writeEvalSuite(charterName: string, name: string, evalSuite: EvalSuite): Promise<void>;
+    removeEvalSuite(charterName: string, name: string): Promise<void>;
+    readCompiledOutputItem(itemPath: string): Promise<string | undefined>;
+    describeItemPlace(itemPath: string): string;
+    resolveOutputLinks(laidText: string): string;
+}
+
+/**
+ * DRIVEN ADAPTER: git, as the command everyone already has.
+ *
+ * Each fetch lands in a store of its own, a temporary bare repository, so the
+ * folder installed into need not be a repository and its own object store and
+ * index are never touched, if it is one. That store's folder is the commit this
+ * adapter answers: it holds the one commit fetched, under `FETCH_HEAD`. The
+ * fetch still reads the repository's own git config, where the folder is in one,
+ * so a source is reached as `git fetch` run there would reach it (CORE-FR-205).
+ * Handing it over takes git 2.31 or later.
+ */
+declare class GitSources implements ForFetchingCharterSources {
+    #private;
+    constructor(
+    /** The repository this works in, every path it is handed from its root:
+     *  refused here unless it names a folder (SDK-FR-010). */
+    repoFolder: URL);
+    /** `git init --bare` first, as nothing else needs a folder: a refusal with
+     *  no such command is a machine without git, not a source out of reach. */
+    fetchCommit(source: string, version?: string): Promise<string>;
+    /** `git rev-parse FETCH_HEAD`. */
+    findCommitId(commit: string): Promise<string>;
+    /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
+     *  path holding a newline or a quote is read as it is. */
+    listFilesAt(commit: string): Promise<readonly string[]>;
+    /** `git show FETCH_HEAD:<path>`. */
+    readFileAt(commit: string, path: string): Promise<string>;
+    /** `git cat-file blob FETCH_HEAD:<path>`, its output taken as bytes: the
+     *  blob as it was committed, with no textconv a user's own git config sets
+     *  (CORE-FR-207). */
+    readBytesAt(commit: string, path: string): Promise<Uint8Array>;
+    /** `git read-tree --prefix` into an index of the store's, and `checkout-index`
+     *  into a work tree of the store's, then a copy beside the folder, swapped with
+     *  it once whole, the folder put back if the swap fails. The
+     *  repository's own index, and what is staged in it, is never read from or
+     *  written to. */
+    checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
+    /** A store left behind is only a temporary folder, and never worth reporting
+     *  a source that landed as one that failed. */
+    removeFetchedCommit(commit: string): Promise<void>;
+}
+
+/** What an mcp origin's authorization server registered `cw` as, and which
+ *  server that was: a registration is presented to the server it came from
+ *  and no other. */
+declare class McpClientRegistration {
+    readonly clientId: string;
+    readonly clientSecret?: string;
+    readonly issuer: string;
+    constructor({ clientId, clientSecret, issuer, }: Pick<McpClientRegistration, "clientId" | "issuer"> & Partial<Pick<McpClientRegistration, "clientSecret">>);
+}
+
+/**
+ * One developer's sign-in at one address, as the credential store keeps it.
+ *
+ * No DTO holds it, so no driver can show one (SC-036): it is read, and handed
+ * on as the access token a call is made with.
+ */
+declare class McpCredential {
+    readonly address: string;
+    readonly method: McpAuthMethod;
+    readonly accessToken: string;
+    readonly refreshToken?: string;
+    readonly expiresAt?: string;
+    readonly client?: McpClientRegistration;
+    constructor({ address, method, accessToken, refreshToken, expiresAt, client, }: Pick<McpCredential, "address" | "method" | "accessToken"> & Partial<Pick<McpCredential, "refreshToken" | "expiresAt" | "client">>);
+}
+
+/** Keeps the credentials of the mcp origins, wherever they are kept: what a
+ *  credential holds is never shown, and no DTO carries one (SC-036). */
+interface ForStoringCredentials {
+    /** The credential kept under this address, or `undefined` where none is. One
+     *  that does not read as a credential is none: signing in again replaces it. */
+    readCredential(address: string): Promise<McpCredential | undefined>;
+    /** Keep this credential under its address, replacing what was there. */
+    writeCredential(credential: McpCredential): Promise<void>;
+}
+
+/**
+ * DRIVEN ADAPTER: each mcp origin's credential kept as one JSON secret under
+ * its address, in the operating system's own credential store, reached by
+ * the command each system ships — `security` on macOS, `secret-tool` on Linux
+ * (FR-149).
+ *
+ * The secret goes in on standard input, so it never shows in a process
+ * listing. `security add-generic-password` takes a password only as an
+ * argument, so on macOS the whole command is written to `security -i`, the
+ * secret as hex through `-X`. What a command prints while writing is never
+ * repeated in a fault: it could echo what it was given.
+ *
+ * Any other platform refuses every call, naming the two it supports.
+ */
+declare class KeychainCredentialsRepository implements ForStoringCredentials {
+    private readonly platform;
+    /** Which system's store to use: this process's, unless a test names
+     *  another. Named as `process.platform` names it, and typed as a plain
+     *  string so a tool importing it type-checks without Node's own types. */
+    constructor(platform?: string);
+    readCredential(address: string): Promise<McpCredential | undefined>;
+    writeCredential(credential: McpCredential): Promise<void>;
+    /** macOS and Linux have a store this knows; anything else is refused
+     *  before a command runs. */
+    private refuseUnsupportedPlatform;
+    private throwFault;
+}
+
+/**
+ * The local files a build checks and writes: it lays the compiled output onto a
+ * repository, wherever it lays it, and writes every file a build planned: where the output lands is its own to know,
+ * never the engine's, which knows an item by its path inside the output, under
+ * `$CW_OUT/` (CORE-FR-220, CORE-FR-221). What each agent reads is
+ * that agent's projection's, `ForManagingLocalAgentOutput`.
+ *
+ * What the build laid is read back through the charter's repository,
+ * `ForManagingCharter`, never off a path the engine knows (CORE-FR-222).
+ */
+interface ForManagingLocalOutput {
+    /** The same output, laid onto another checkout of the repository, such as
+     *  a worktree, by the folder the checkout was made in, in this adapter's
+     *  words. */
+    createCheckoutOutput(checkoutFolder: string): ForManagingLocalOutput;
+    /**
+     * What laying this output would do, decided and not yet done (FR-020,
+     * FR-022): each place it would write, with what it would hold and what it
+     * holds now, and each place the last build left in the output that this one
+     * would take away or write again. Reads, and only reads.
+     */
+    createProjectionPlan(charterOutput: CharterOutput): Promise<ProjectionPlan>;
+    /** That plan carried out, every agent's files in it: what the last build
+     *  left taken away, then this one written (FR-020, FR-021). */
+    writePlan(projectionPlan: ProjectionPlan): Promise<void>;
+}
+
+/**
+ * DRIVEN ADAPTER: the compiled output laid onto the repository as files, under
+ * `.cw/out/`, which nothing else writes, each item as the build compiled it
+ * (CORE-FR-221); and every file a build planned, each agent's own among them,
+ * written.
+ */
+declare class LocalRepoManipulator implements ForManagingLocalOutput {
+    #private;
+    constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, checkoutFolder?: string);
+    /** The same output over another checkout. A class extending this one is
+     *  refused, never built as this one: it builds itself over the checkout, by
+     *  its own constructor (EVAL-FR-021). */
+    createCheckoutOutput(checkoutFolder: string): LocalRepoManipulator;
+    createProjectionPlan(charterOutput: CharterOutput): Promise<ProjectionPlan>;
+    writePlan(projectionPlan: ProjectionPlan): Promise<void>;
+}
+
+/** What an adapter answering this port raises when the server behind it
+ *  cannot be reached, named again here so it names this port and nothing
+ *  behind it. */
+
+/**
+ * What one OAuth sign-in ends with: the tokens the authorization server issued,
+ * and what it registered `cw` as, so a renewal needs no second registration (plan §19.5).
+ *
+ * Not a domain type, and no DTO carries one (SC-036): it goes from this port
+ * into the credential store and back, and nowhere else.
+ */
+interface OAuthGrant {
+    readonly accessToken: string;
+    readonly refreshToken?: string;
+    /** ISO 8601. Absent where the mcp origin said nothing of when it expires. */
+    readonly expiresAt?: string;
+    /** What the authorization server registered `cw` as, and which server that
+     *  was: a registration is presented to the server it came from and no
+     *  other. */
+    readonly client: OAuthClientRegistration;
+}
+
+/** What an OAuth authorization server registered a client as (RFC 7591): its
+ *  id, its secret where it issued one, and the server that issued them. */
+interface OAuthClientRegistration {
+    readonly clientId: string;
+    readonly clientSecret?: string;
+    readonly issuer: string;
+}
+
+/**
+ * DRIVEN PORT — OAuth against one authorization server: signing in, and
+ * renewing what a sign-in ended with (FR-148, FR-151).
+ *
+ * Discovery, registration, PKCE and the callback are the adapter's business;
+ * the hexagon hands it an endpoint and keeps what comes back.
+ */
+interface ForAuthorizingOAuthClients {
+    /**
+     * Sign in to the server at this endpoint in the developer's browser.
+     *
+     * `showAuthorizationUrl` is handed the address to open, once: the adapter
+     * never opens it (plan §15). Raises an `AdapterFault` where the server cannot
+     * be reached, the developer refuses, or nobody comes back in time.
+     */
+    authorizeInBrowser(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant>;
+    /**
+     * Renew one grant with its refresh token, asking nobody.
+     *
+     * `undefined` where the server refuses: the developer has to sign in again.
+     * A server that cannot be reached raises an `AdapterFault` instead, since
+     * nothing says the grant is no good.
+     */
+    renewGrant(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;
+}
+
+/**
+ * DRIVEN ADAPTER: OAuth against one MCP server, over the SDK's own client —
+ * discovery, dynamic registration, PKCE and renewal are its (plan §19.5).
+ *
+ * A sign-in listens on `127.0.0.1` at a port the system picks, for the one
+ * request the browser comes back with, and closes. The address to open is
+ * handed to the caller, never opened here (plan §15). Nothing is kept here:
+ * the grant goes back to the caller, and the credential store is its business.
+ */
+declare class OAuth implements ForAuthorizingOAuthClients {
+    #private;
+    constructor(callbackTimeoutMs?: number);
+    authorizeInBrowser(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant>;
+    renewGrant(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;
+}
+
+/**
+ * DRIVEN PORT — a tokenizer that runs on this machine. The hexagon hands it a
+ * text and is told how many tokens that text is; which tokenizer answers, and
+ * how, is the adapter's business.
+ *
+ * No tokenizer of the model an agent runs on is at hand offline, so what this
+ * answers is an estimate of that model's count, and whoever says the number
+ * says so (EVAL-FR-002).
+ */
+interface ForCountingTokens {
+    /** How many tokens this text is, to the tokenizer behind this port. */
+    countTokens(text: string): number;
+}
+
+/**
+ * DRIVEN ADAPTER: js-tiktoken, a tokenizer that runs offline, with
+ * `o200k_base`. Not the tokenizer of the model an agent runs on, which is not
+ * published; near enough to stand in for it, and said to be an estimate
+ * wherever it is used (EVAL-FR-002).
+ *
+ * The encoding is loaded the first time a text is counted, not when this is
+ * made: a command that counts nothing pays nothing for it.
+ */
+declare class Tiktoken implements ForCountingTokens {
+    #private;
+    countTokens(text: string): number;
+}
+
 /** Every schema of this module's DTOs, under its name — the name it carries
  *  as `type` — in alphabetical order. */
 declare const CharterDTOs: {
@@ -2717,44 +5170,6 @@ declare namespace CharterDTOs {
     type TestSuites = z.infer<typeof CharterDTOs.TestSuites>;
 }
 
-/** The names a layer goes by: what this repository authored itself, in a
- *  charter of its own; what it installed from someone else, in a charter holding
- *  where it came from (VENDOR-FR-010); and what the running engine brings
- *  itself, supplied on every read and kept nowhere in the repository, so
- *  nothing can refresh, edit or remove it (FR-015, FR-016). */
-declare const LAYER_NAMES: readonly ["repo", "package", "builtin"];
-
-/** Whose layer a primitive came from, and there are only the three. It says
- *  where a primitive was written, never what it is called: one charter has one
- *  id space, whichever layer or charter a file arrived in (FR-014, FR-019,
- *  VENDOR-FR-009). */
-type LayerName = (typeof LAYER_NAMES)[number];
-
-/** The layer a primitive was read in: whose it is, and for one kept in the
- *  repository, the charter it is kept in (VENDOR-FR-009). Where it is kept is
- *  what keeps it to know, never the layer's (CORE-FR-213). */
-declare class PrimitiveLayer<Name extends LayerName = LayerName> {
-    readonly name: Name;
-    /** The charter it is kept in: `sdd`. None for the engine's own. */
-    readonly charterName?: string | undefined;
-    /** This repository's own layer, before a charter is named for it: a
-     *  primitive an author answered, not kept yet (FR-039). */
-    static readonly REPO: PrimitiveLayer<"repo">;
-    /** The engine's own layer: kept nowhere, so there is nothing to open (FR-015,
-     *  FR-018). */
-    static readonly BUILTIN: PrimitiveLayer<"builtin">;
-    private constructor();
-    /** The name every layer the repository installed goes by, as its
-     *  `cw-package.json` makes it one (VENDOR-FR-010). */
-    static get packageName(): "package";
-    /** The layer of a charter this repository authored: where a primitive is
-     *  written when it is authored here (FR-039, VENDOR-FR-010). */
-    static authoredLayerOf(charterName: string): PrimitiveLayer<"repo">;
-    /** The layer of a charter this repository installed, read-only
-     *  (VENDOR-FR-010). */
-    static installedLayerOf(charterName: string): PrimitiveLayer<"package">;
-}
-
 /** What one primitive's author answered, under the header each answer fills
  *  in: a line, or the entries of a list — not yet read by the kind's schema,
  *  which is what refuses what the kind will not take. */
@@ -3120,1687 +5535,6 @@ interface ForAuthoringCharter {
     getAccessToken(mcpOriginAddress: McpOriginAddress, isRefused: boolean): Promise<CharterDTOs.AccessToken | FaultDTOs.Fault>;
 }
 
-/** What an adapter answering this port raises when the server behind it
- *  cannot be reached, named again here so it names this port and nothing
- *  behind it. */
-
-/**
- * What one OAuth sign-in ends with: the tokens the authorization server issued,
- * and what it registered `cw` as, so a renewal needs no second registration (plan §19.5).
- *
- * Not a domain type, and no DTO carries one (SC-036): it goes from this port
- * into the credential store and back, and nowhere else.
- */
-interface OAuthGrant {
-    readonly accessToken: string;
-    readonly refreshToken?: string;
-    /** ISO 8601. Absent where the mcp origin said nothing of when it expires. */
-    readonly expiresAt?: string;
-    /** What the authorization server registered `cw` as, and which server that
-     *  was: a registration is presented to the server it came from and no
-     *  other. */
-    readonly client: OAuthClientRegistration;
-}
-
-/** What an OAuth authorization server registered a client as (RFC 7591): its
- *  id, its secret where it issued one, and the server that issued them. */
-interface OAuthClientRegistration {
-    readonly clientId: string;
-    readonly clientSecret?: string;
-    readonly issuer: string;
-}
-
-/**
- * DRIVEN PORT — OAuth against one authorization server: signing in, and
- * renewing what a sign-in ended with (FR-148, FR-151).
- *
- * Discovery, registration, PKCE and the callback are the adapter's business;
- * the hexagon hands it an endpoint and keeps what comes back.
- */
-interface ForAuthorizingOAuthClients {
-    /**
-     * Sign in to the server at this endpoint in the developer's browser.
-     *
-     * `showAuthorizationUrl` is handed the address to open, once: the adapter
-     * never opens it (plan §15). Raises an `AdapterFault` where the server cannot
-     * be reached, the developer refuses, or nobody comes back in time.
-     */
-    authorizeInBrowser(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant>;
-    /**
-     * Renew one grant with its refresh token, asking nobody.
-     *
-     * `undefined` where the server refuses: the developer has to sign in again.
-     * A server that cannot be reached raises an `AdapterFault` instead, since
-     * nothing says the grant is no good.
-     */
-    renewGrant(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;
-}
-
-/** One charter of primitives as its store keeps it, before the engine reads
- *  it: its name, the text of its `cw-package.json` where it holds one, and
- *  where it and that file are kept, said back and never read
- *  (VENDOR-FR-009, VENDOR-FR-010). */
-declare class RawCharterMetadata {
-    readonly name: string;
-    readonly installedCharterRecordText: string | undefined;
-    readonly uri: string;
-    readonly installedCharterRecordUri: string;
-    constructor(name: string, installedCharterRecordText: string | undefined, uri: string, installedCharterRecordUri: string);
-}
-
-/** What a `cw-package.json` holds: the charter, the source and the version,
- *  each a string (VENDOR-FR-010). Whatever else it holds is left unread. */
-declare const InstalledCharterRecordSchema: z.ZodObject<{
-    charter: z.ZodString;
-    source: z.ZodString;
-    version: z.ZodString;
-}, z.core.$strip>;
-
-/** Where an installed charter came from, as its `cw-package.json` says: the
- *  charter's name in its source, the source as it was typed, and the version
- *  installed (VENDOR-FR-010, VENDOR-FR-017). */
-declare class InstalledCharterRecord {
-    readonly charterName: string;
-    readonly source: string;
-    readonly version: string;
-    static get schema(): typeof InstalledCharterRecordSchema;
-    constructor(charterName: string, source: string, version: string);
-    /** What a `cw-package.json` holds of it. */
-    toJSON(): z.infer<typeof InstalledCharterRecordSchema>;
-}
-
-/** One file of a primitive's folder beside its `index.md`: the path it has in
- *  that folder, and the bytes it holds, never decoded, so it is copied whole
- *  whatever it holds (FR-168, CORE-FR-207). */
-declare class AssetFile {
-    readonly assetPath: string;
-    readonly contents: Uint8Array;
-    constructor(assetPath: string, contents: Uint8Array);
-}
-
-/** One primitive as it is handed in, raw — kept, or answered by an author —
- *  before the engine reads it: its layer, the kind and id it is kept under, its index.md as text or as
- *  the bytes kept, every file kept with it (FR-168), and where it is kept, in
- *  that keeper's own scheme. The engine reads the text and checks it against
- *  the kind and id; it never reads the uri, which it only says back
- *  (CORE-FR-213). */
-declare class RawPrimitive {
-    readonly layer: PrimitiveLayer;
-    readonly kind: string;
-    readonly id: string;
-    /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
-     *  the headers and body an author answered, where no file is written yet
-     *  (FR-011). */
-    readonly contents: string | Uint8Array | {
-        readonly headers: Readonly<Record<string, unknown>>;
-        readonly body: string;
-    };
-    readonly assets: readonly AssetFile[];
-    readonly uri: string;
-    /** Whether it is kept as a primitive is, apart with its assets: a
-     *  markdown file kept on its own is how an earlier version kept one
-     *  (FR-141). */
-    readonly isKeptApart: boolean;
-    /** Where its keeper would keep a primitive of this kind and id, as the
-     *  uri of its folder, for a fault to say where to move it (FR-141); the
-     *  engine says it back and never reads it. */
-    readonly folderUriOf?: ((kind: string, id: string) => string) | undefined;
-    constructor(layer: PrimitiveLayer, kind: string, id: string, 
-    /** Its index.md, as text, or as bytes kept as they are (CORE-FR-207); or
-     *  the headers and body an author answered, where no file is written yet
-     *  (FR-011). */
-    contents: string | Uint8Array | {
-        readonly headers: Readonly<Record<string, unknown>>;
-        readonly body: string;
-    }, assets: readonly AssetFile[], uri: string, 
-    /** Whether it is kept as a primitive is, apart with its assets: a
-     *  markdown file kept on its own is how an earlier version kept one
-     *  (FR-141). */
-    isKeptApart?: boolean, 
-    /** Where its keeper would keep a primitive of this kind and id, as the
-     *  uri of its folder, for a fault to say where to move it (FR-141); the
-     *  engine says it back and never reads it. */
-    folderUriOf?: ((kind: string, id: string) => string) | undefined);
-    /** Its index.md as text, a leading BOM kept as a file read as text keeps it
-     *  (CORE-FR-207). */
-    get text(): string;
-}
-
-/** One charter a source keeps, `.cw/charter/<charter>/`, named by its folder,
- *  authored there or installed there alike, as one commit of it was fetched
- *  and read (VENDOR-FR-017, VENDOR-FR-019): its primitives as the source keeps
- *  them, what tells which other charters it includes (VENDOR-FR-018).
- *  `commit` is what was fetched, for what fetched it alone to read again;
- *  `commitId` is its id in version control. `sourceFolder` is where it sits
- *  in the source, for what copies it. */
-declare class CharterSource {
-    readonly commit: string;
-    readonly commitId: string;
-    readonly name: string;
-    readonly rawPrimitives: readonly RawPrimitive[];
-    readonly sourceFolder: string;
-    /** The folders of it that are copied, by their paths in it: each
-     *  primitive's, and those of its test cases and eval cases. */
-    readonly keptFolderPaths: readonly string[];
-    constructor(commit: string, commitId: string, name: string, rawPrimitives: readonly RawPrimitive[], sourceFolder: string, 
-    /** The folders of it that are copied, by their paths in it: each
-     *  primitive's, and those of its test cases and eval cases. */
-    keptFolderPaths: readonly string[]);
-    /** The description one of its primitives declares, empty where it
-     *  declares none. Shown, never refused: the charter is installed whole, as
-     *  its source holds it (VENDOR-FR-017). */
-    descriptionOf(rawPrimitive: RawPrimitive): string;
-}
-
-/** Where a charter this repository installs rather than authors comes from:
- *  the source as it was typed, handed to version control as it is (FR-049,
- *  FR-050). */
-declare class CharterSourceOrigin {
-    readonly sourceUri: string;
-    constructor(sourceUri: string);
-}
-
-/** One charter a source's pull or fork puts in the repository, every
- *  refusal settled: the name it is held under here; the source's charter
- *  copied into it; and what its `cw-package.json` says once it is down, written
- *  on this machine, or none for a charter the repository now owns
- *  (VENDOR-FR-017 to VENDOR-FR-022). What the name held before is replaced
- *  whole. */
-declare class CharterInstall {
-    readonly charterName: string;
-    readonly charterSource: CharterSource;
-    readonly installedCharterRecord: InstalledCharterRecord | undefined;
-    constructor(charterName: string, charterSource: CharterSource, installedCharterRecord: InstalledCharterRecord | undefined);
-}
-
-/**
- * What one evaluation case may say (EVAL-FR-020): a prompt put to the agent,
- * and what is expected of it — a skill invoked, a guide followed, at most a
- * number of tokens, or a file read — at least one expectation.
- */
-declare const EvalCaseSchema: z.ZodObject<{
-    prompt: z.ZodString;
-    expect: z.ZodObject<{
-        invoke: z.ZodOptional<z.ZodString>;
-        follow: z.ZodOptional<z.ZodString>;
-        read: z.ZodOptional<z.ZodString>;
-        maxTokens: z.ZodOptional<z.ZodNumber>;
-    }, z.core.$strict>;
-}, z.core.$strict>;
-
-/** One case of an evaluation file, as `EvalCaseSchema` read it: the prompt
- *  put to the agent and what is expected of it. A value the suite holds, made
- *  where the suite is read and by nothing else. */
-declare class EvalCase {
-    readonly prompt: string;
-    readonly expect: z.infer<typeof EvalCaseSchema>["expect"];
-    constructor(evalCase: Pick<EvalCase, "prompt" | "expect">);
-    static get schema(): typeof EvalCaseSchema;
-}
-
-/** What an evaluation file may hold: what it is about, and its cases. JSON, as
- *  a test file is: nothing reads it but `cw eval`. Not a primitive
- *  (EVAL-FR-020). */
-declare const EvalSuiteSchema: z.ZodObject<{
-    description: z.ZodOptional<z.ZodString>;
-    cases: z.ZodArray<z.ZodPipe<z.ZodObject<{
-        prompt: z.ZodString;
-        expect: z.ZodObject<{
-            invoke: z.ZodOptional<z.ZodString>;
-            follow: z.ZodOptional<z.ZodString>;
-            read: z.ZodOptional<z.ZodString>;
-            maxTokens: z.ZodOptional<z.ZodNumber>;
-        }, z.core.$strict>;
-    }, z.core.$strict>, z.ZodTransform<EvalCase, {
-        prompt: string;
-        expect: {
-            invoke?: string | undefined;
-            follow?: string | undefined;
-            read?: string | undefined;
-            maxTokens?: number | undefined;
-        };
-    }>>>;
-}, z.core.$strict>;
-
-/** One evaluation file, as `EvalSuiteSchema` read it: what it is about, the
- *  cases it evaluates, and the body it was read from, as its author wrote it. Made by `EvalSuiteFactory.create` and by nothing
- *  else. */
-declare class EvalSuite {
-    readonly description: string | undefined;
-    readonly cases: readonly EvalCase[];
-    readonly body: string;
-    static get schema(): typeof EvalSuiteSchema;
-    static get defaultBody(): typeof DEFAULT_EVAL_SUITE_BODY;
-    constructor(description: string | undefined, cases: readonly EvalCase[], body: string);
-}
-
-/** What a new evaluation file holds: one case that reads, so its author edits
- *  rather than looks the format up, as a new test file does (FR-091). */
-declare const DEFAULT_EVAL_SUITE_BODY: string;
-
-/** One file of evaluation cases as what keeps them keeps it, before the
- *  engine reads it: the name it is reported under, what it holds, and where it
- *  is kept, said back and never read (CORE-FR-213). */
-declare class RawEvalSuite {
-    readonly name: string;
-    /** The charter it is kept in (VENDOR-FR-009). */
-    readonly charterName: string;
-    readonly text: string;
-    readonly uri: string;
-    constructor(name: string, 
-    /** The charter it is kept in (VENDOR-FR-009). */
-    charterName: string, text: string, uri: string);
-}
-
-/** The delimiter a primitive's headers are written between. One constant for
- *  the writing here and the reading in `PrimitiveFactory.create`, so the two cannot drift. */
-declare const DELIMITER = "---";
-
-type CommonHeaders = Readonly<z.infer<ReturnType<typeof BasePrimitive.headersSchema>>>;
-
-/**
- * What every kind of primitive is: the headers its file declared, and the body
- * loaded only when it activates (FR-002, FR-013).
- *
- * A kind's own class extends this, declares the headers it requires, and
- * refuses a file that does not hold them — so having one is the promise that
- * the kind's contract holds (FR-004). What a file declared is read once, where
- * it is checked, and held as that kind's headers from then on.
- */
-declare abstract class BasePrimitive<Headers extends CommonHeaders = CommonHeaders> {
-    #private;
-    /** What this primitive's file declared, read as the contract of its kind:
-     *  typed by whichever kind this is, so `headers.globs` compiles on a guide
-     *  and nowhere else. */
-    readonly headers: Headers;
-    readonly body: string;
-    /** Every file of its folder beside its `index.md`, at any depth (FR-168). */
-    readonly assets: readonly AssetFile[];
-    static get delimiter(): typeof DELIMITER;
-    /**
-     * One kind's headers, read off what its file declared by that kind's schema, or
-     * one fault saying they are not what the kind holds (FR-004).
-     *
-     * The fault does not list what is wrong, header by header: it shows the kind's
-     * own sample, and an author holding the two side by side sees the difference.
-     * Where the schema said what is wrong in its own words — a rule spanning two
-     * headers, which no sample shows at a glance — those words are the message.
-     */
-    static headersOf<Schema extends z.ZodType>(sampledKind: {
-        readonly kind: string;
-        readonly sample: Readonly<Record<string, unknown>>;
-    }, headerSchema: Schema, headerRecord: Readonly<Record<string, unknown>>): Readonly<z.infer<Schema>>;
-    /** The headers every kind declares, whatever else its own contract asks for
-     *  (data-model §1). Each kind's own headers extend these, so what every
-     *  primitive holds is written once. */
-    static headersSchema(): z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    }, z.core.$strip>;
-    /** What every kind requires of its author, whatever else its own contract
-     *  asks for. A kind's own `requires` stands beside this rather than adding to
-     *  it, so whoever asks for a kind's headers asks for both (FR-039). `id` is
-     *  not among them: a primitive is named where it is asked for rather than
-     *  answered for, so what is left to ask about is what it is for. */
-    static readonly requires: RequiredHeaders;
-    /** The file a primitive's folder is read from, and compiled to (FR-141):
-     *  said here for whoever reads a folder before any primitive is read off it,
-     *  and by `index` on every primitive. */
-    static readonly indexFileName = "index.md";
-    /** The schema every kind's headers are read by, its own standing in place of
-     *  this. What a file is refused against, and the one place saying what shape
-     *  each header holds — including the ones a kind takes without requiring, so
-     *  whoever is writing a header reads its shape off the same contract a file
-     *  is refused against (FR-004). */
-    static readonly schema: z.ZodObject;
-    protected constructor(
-    /** What this primitive's file declared, read as the contract of its kind:
-     *  typed by whichever kind this is, so `headers.globs` compiles on a guide
-     *  and nowhere else. */
-    headers: Headers, body: string, 
-    /** Every file of its folder beside its `index.md`, at any depth (FR-168). */
-    assets?: readonly AssetFile[], 
-    /** The layer it was read in; a primitive authored here is in this
-     *  repository's. */
-    primitiveLayer?: PrimitiveLayer, 
-    /** Where what keeps it says it is kept, in its own scheme: `file:` for
-     *  files, `db:` for a database. Never read here, only said back to whoever
-     *  is told where it is (CORE-FR-213). */
-    keptUri?: string);
-    /** The layer it was read in: whose layer it came from. It says where it
-     *  was written, never what it is called (FR-014, FR-019). */
-    readonly layer: PrimitiveLayer;
-    /** Where it is kept, as what keeps it says: none for one not yet kept. The
-     *  engine's own is kept nowhere, and is said by the name of its layer
-     *  (FR-015). */
-    get uri(): string;
-    /** Whether a word someone searched for is anywhere a reader would look for
-     *  it: the id, the kind, what it is for, when its kind comes up, its
-     *  folder and file under its kind, its layer and the installed charter it came from,
-     *  or any header it declared — ignoring case, since whoever typed it
-     *  did not know how it was written (FR-114). */
-    hasWord(word: string): boolean;
-    /** Whether this primitive is available to an agent. No restriction means all. */
-    supportsAgent(_agentProvider: AgentProvider): boolean;
-    /** Which kind this is. Each class declares it as a literal, and those
-     *  literals are where `Kind` comes from. */
-    abstract readonly kind: string;
-    /** Its folder, from its charter folder: its kind, then each segment of its
-     *  id (FR-141). */
-    get primitiveFolder(): string;
-    /** The file of that folder it is read from (FR-141). */
-    get index(): string;
-    /** When a reader of this charter is to open a primitive of its kind at all:
-     *  the line its kind's class declares, in the words `cw kinds` says it in
-     *  (FR-002, FR-029). */
-    get activatesWhen(): string;
-    /** The hash of it written out, which is what a save writes: what a save is
-     *  checked against, so an edit made on disk since it was opened is not
-     *  written over (FR-078). */
-    get hash(): string;
-    /** Its id as every name given to an agent writes it, `/` as `-`:
-     *  `mfbs-no-any` for `mfbs/no-any`, so a skill is invoked as `/mfbs-no-any`
-     *  (FR-141, FR-171). Made here, once, so nothing that names an agent's file
-     *  spells it again. */
-    get normId(): string;
-    /**
-     * This primitive as the file it is authored in: its headers between the
-     * delimiters, and its body under them.
-     *
-     * The other direction of the reading `PrimitiveFactory.create` does, and the same
-     * frontmatter, so a file written here is a file that reads back as this
-     * primitive. Said here rather than by whoever writes, for the reason
-     * `description` is: what a primitive holds is the primitive's own, and a
-     * caller holding one already has everything the file says.
-     *
-     * The kind leads, since it is what decides how the rest is read (FR-003). A
-     * list is written the way the parser gives it back, so an author opening the
-     * file finds what they declared rather than a second spelling of it.
-     *
-     * Written as its author wrote it unless the compiler says otherwise (FR-139):
-     * `mixins` lend their bodies, before this one's own so it reads as the point
-     * and theirs as the setting, or after it where a mixin's `position` is `end`
-     * — nothing is merged and no header moves (FR-006);
-     * and `idReplacer` rewrites the body as its reader uses it, each mcp origin,
-     * script and template it names as a link to its file (FR-147).
-     */
-    writeMarkdown({ mixins, idReplacer, }?: {
-        /** The mixin primitives it pulls in, in the order it named them: all a
-         *  mixin lends is its body, and where it goes. */
-        readonly mixins?: readonly {
-            readonly body: string;
-            readonly headers: {
-                readonly position: "start" | "end";
-            };
-        }[];
-        readonly idReplacer?: (body: string) => string;
-    }): string;
-    /**
-     * The one line this primitive is found by, composed: what its author wrote it
-     * is for, and — where its kind decides when it applies — what it applies to.
-     *
-     * Said here rather than by whoever compiles, because what makes a kind
-     * activate is the kind's own contract (FR-001, FR-004): a skill's triggers are
-     * the author's words, which only a skill knows how to say in a line. A kind
-     * that nothing activates on its description is the description it was
-     * written with.
-     */
-    composeDescription(): string;
-}
-
-/**
- * What one kind requires beyond the common headers, and the shape each of them
- * takes: one line of text, or a list of names.
- *
- * Declared by the kind's own class, because what a kind requires is its own
- * contract (FR-004). Written as data, so what a file being scaffolded is to be
- * given is read off it (FR-039).
- */
-type RequiredHeaders = Readonly<Record<string, "line" | "list">>;
-
-/** A role the agent delegates to, with the tools it may use (FR-004). */
-type AgentHeaders = Readonly<z.infer<typeof AgentPrimitive.schema>>;
-
-declare class AgentPrimitive extends BasePrimitive {
-    readonly headers: AgentHeaders;
-    static readonly kind: "agent";
-    readonly kind: "agent";
-    /** What this kind requires beyond the common headers, declared where its
-     *  contract is: it is read both where a file is checked and where one is
-     *  scaffolded (FR-004, FR-039). */
-    static readonly requires: {
-        readonly tools: "list";
-    };
-    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-     *  against, and what says the shape of every header this kind takes, required
-     *  or not (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        tools: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-        model: z.ZodOptional<z.ZodString>;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all, said
-     *  where the kind's contract is: the neutral surface lists one
-     *  line per kind and none of them is written down twice (FR-002). */
-    static readonly activatesWhen = "it is spawned by id, holding the `tools` it lists and nothing else \u2014 an mcp origin as `[[<id>]]`, or one of its tools as `[[<id>]]:<tool>`";
-    /** An agent as an author writes one: what a refused header is fixed with.
-     *  It holds one tool of an mcp origin the way an author writes it (FR-156). */
-    static readonly sample: AgentHeaders;
-    /** The agent its model is named for; none where it names no model. */
-    get modelProvider(): string | undefined;
-    /** The model this agent runs it on, as this agent names it; none where its
-     *  model is named for another agent, or not at all. */
-    modelOf(agentProvider: AgentProvider): string | undefined;
-    /** One agent, or every fault its headers have (FR-004). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): AgentPrimitive;
-}
-
-/** Reasoning a primitive cites, loaded only on demand. Beyond the common
- *  headers it asks for nothing (FR-004). */
-type CorpusHeaders = Readonly<z.infer<typeof CorpusPrimitive.schema>>;
-
-declare class CorpusPrimitive extends BasePrimitive {
-    readonly headers: CorpusHeaders;
-    static readonly kind: "corpus";
-    readonly kind: "corpus";
-    /** What this kind requires beyond the common headers: nothing. Declared all
-     *  the same, since what a file is scaffolded with is read off this (FR-039). */
-    static readonly requires: {};
-    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-     *  against, and what says the shape of every header this kind takes, required
-     *  or not (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all, said
-     *  where the kind's contract is: the neutral surface lists one
-     *  line per kind and none of them is written down twice (FR-002). */
-    static readonly activatesWhen = "a primitive's `rationale` cites it \u2014 the reasoning, read when someone asks why";
-    /** A corpus as an author writes one: what a refused header is fixed with. */
-    static readonly sample: CorpusHeaders;
-    /** One corpus, or every fault its headers have (FR-004). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): CorpusPrimitive;
-}
-
-/** A standard the agent is held to. Its body is loaded when a touched file
- *  matches one of its globs, and on every turn where it names none (FR-004). */
-type GuideHeaders = Readonly<z.infer<typeof GuidePrimitive.schema>>;
-
-declare class GuidePrimitive extends BasePrimitive {
-    readonly headers: GuideHeaders;
-    static readonly kind: "guide";
-    readonly kind: "guide";
-    /** What this kind requires beyond the common headers: nothing. Declared all
-     *  the same, since what a file is scaffolded with is read off this (FR-039). */
-    static readonly requires: {};
-    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-     *  against, and what says the shape of every header this kind takes, required
-     *  or not (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all, said
-     *  where the kind's contract is: the neutral surface lists one
-     *  line per kind and none of them is written down twice (FR-002). */
-    static readonly activatesWhen = "a touched file matches one of its `globs`, or every turn where globs are not specified";
-    /** A guide as an author writes one: what a refused header is fixed with. */
-    static readonly sample: GuideHeaders;
-    /** One guide, or every fault its headers have (FR-004). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): GuidePrimitive;
-}
-
-/**
- * One MCP server, an mcp origin where a primitive's reasons are kept outside the
- * repository: reached at an `endpoint`, or started as a `command` (FR-142).
- *
- * One object refined rather than a union of the two shapes, so every header it
- * takes is still read off its `shape` (FR-039); which of the two a file holds,
- * and what that shape asks for beside it, is the refinement's to say.
- */
-type McpHeaders = Readonly<z.infer<typeof McpPrimitive.schema>>;
-
-declare class McpPrimitive extends BasePrimitive {
-    readonly headers: McpHeaders;
-    static readonly kind: "mcp";
-    readonly kind: "mcp";
-    /** What this kind requires beyond the common headers. `endpoint` or
-     *  `command` is required too, but which depends on the shape, so the schema's
-     *  refinement says it rather than this (FR-004, FR-039). */
-    static readonly requires: {
-        readonly tools: "list";
-    };
-    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-     *  against, and what says the shape of every header this kind takes, required
-     *  or not (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        endpoint: z.ZodOptional<z.ZodString>;
-        command: z.ZodOptional<z.ZodString>;
-        args: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        auth: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodEnum<{
-            oauth: "oauth";
-            token: "token";
-        }>>>>;
-        tokenEnv: z.ZodOptional<z.ZodString>;
-        path: z.ZodOptional<z.ZodString>;
-        tools: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all, said
-     *  where the kind's contract is: the neutral surface lists one
-     *  line per kind and none of them is written down twice (FR-002). */
-    static readonly activatesWhen = "a primitive's body names it as `[[<id>]]` \u2014 an mcp origin outside the repository, reached through `cw run mcp`";
-    /** An mcp reached at an endpoint, as an author writes one: what a refused
-     *  header is fixed with. */
-    static readonly sample: McpHeaders;
-    /** The same mcp origin started as a local process: what a refused file declaring
-     *  `command` is held up against, since that is the shape it was nearer. */
-    static readonly commandSample: McpHeaders;
-    /** What a developer signs in to, and what mcp origins are told apart by beside
-     *  their `path`: the endpoint, or the command followed by each of its
-     *  arguments. The refinement has already held that one of the two is here
-     *  (FR-142). */
-    get address(): string;
-    /** The mcp origin this mcp is served from, told apart by its address and
-     *  path, never its name, joined by a character neither side can hold: a
-     *  path is one line, and an address is an endpoint or a command line. */
-    get originKey(): string;
-    /** One mcp, or every fault its headers have, shown the sample of the shape
-     *  it declared (FR-004, FR-142). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): McpPrimitive;
-}
-
-/** Headers and body reused by other primitives. A leaf: it lends its body to
- *  the primitive that pulls it in, and pulls in none of its own (FR-006). */
-type MixinHeaders = Readonly<z.infer<typeof MixinPrimitive.schema>>;
-
-declare class MixinPrimitive extends BasePrimitive {
-    readonly headers: MixinHeaders;
-    static readonly kind: "mixin";
-    readonly kind: "mixin";
-    /** What this kind requires beyond the common headers: nothing. Declared all
-     *  the same, since what a file is scaffolded with is read off this (FR-039). */
-    static readonly requires: {};
-    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-     *  against, and what says the shape of every header this kind takes, required
-     *  or not (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodUndefined>;
-        position: z.ZodDefault<z.ZodEnum<{
-            start: "start";
-            end: "end";
-        }>>;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all, said
-     *  where the kind's contract is: the neutral surface lists one
-     *  line per kind and none of them is written down twice (FR-002). */
-    static readonly activatesWhen = "never on its own: its body is lent to the primitives that pull it in";
-    /** A mixin as an author writes one: what a refused header is fixed with. */
-    static readonly sample: MixinHeaders;
-    /** One mixin, or every fault its headers have (FR-004, FR-006). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): MixinPrimitive;
-}
-
-/** An ordered procedure loaded when a request matches its triggers (FR-004). */
-type PlaybookHeaders = Readonly<z.infer<typeof PlaybookPrimitive.schema>>;
-
-declare class PlaybookPrimitive extends BasePrimitive {
-    readonly headers: PlaybookHeaders;
-    static readonly kind: "playbook";
-    readonly kind: "playbook";
-    /** What this kind requires beyond the common headers, declared where its
-     *  contract is: it is read both where a file is checked and where one is
-     *  scaffolded (FR-004, FR-039). */
-    static readonly requires: {
-        readonly triggers: "list";
-    };
-    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-     *  against, and what says the shape of every header this kind takes, required
-     *  or not (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        triggers: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-        "disable-user-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
-        "disable-model-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all, said
-     *  where the kind's contract is: the neutral surface lists one
-     *  line per kind and none of them is written down twice (FR-002). */
-    static readonly activatesWhen = "one of its `triggers` matches; the body is a sequence of skills";
-    /** A playbook as an author writes one: what a refused header is fixed with. */
-    static readonly sample: PlaybookHeaders;
-    /** What this is found by: what it is for, and the requests its author said
-     *  bring it up. */
-    composeDescription(): string;
-    /** One playbook, or every fault its headers have (FR-004). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): PlaybookPrimitive;
-}
-
-type AgentBasedHeaders = Readonly<z.infer<ReturnType<typeof AgentBasedPrimitive.headersSchema>>>;
-
-/** Shared provider selection for posture and sensor primitives. */
-declare abstract class AgentBasedPrimitive<Headers extends AgentBasedHeaders = AgentBasedHeaders> extends BasePrimitive<Headers> {
-    static headersSchema(): z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    }, z.core.$strip>;
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    }, z.core.$strip>;
-    supportsAgent(agentProvider: AgentProvider): boolean;
-}
-
-/** What the agent may and may not do, as permission lists (FR-004). */
-type PostureHeaders = Readonly<z.infer<typeof PosturePrimitive.schema>>;
-
-declare class PosturePrimitive extends AgentBasedPrimitive {
-    readonly headers: PostureHeaders;
-    static readonly kind: "posture";
-    readonly kind: "posture";
-    /** What this kind requires beyond the common headers, declared where its
-     *  contract is: it is read both where a file is checked and where one is
-     *  scaffolded (FR-004, FR-039). */
-    static readonly requires: {
-        readonly allow: "list";
-        readonly deny: "list";
-    };
-    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-     *  against, and what says the shape of every header this kind takes, required
-     *  or not (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        allow: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-        deny: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all, said
-     *  where the kind's contract is: the neutral surface lists one
-     *  line per kind and none of them is written down twice (FR-002). */
-    static readonly activatesWhen = "always, wherever the agent can be told what to `allow` and what to `deny`";
-    /** A posture as an author writes one: what a refused header is fixed with. */
-    static readonly sample: PostureHeaders;
-    /** One posture, or every fault its headers have (FR-004). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): PosturePrimitive;
-}
-
-/** Files the agent or a sensor runs, kept as real files beside the script's
- *  `index.md`: its assets (FR-165). */
-type ScriptHeaders = Readonly<z.infer<typeof ScriptPrimitive.schema>>;
-
-declare class ScriptPrimitive extends BasePrimitive {
-    readonly headers: ScriptHeaders;
-    static readonly kind: "script";
-    readonly kind: "script";
-    /** What this kind requires beyond the common headers, declared where its
-     *  contract is (FR-004, FR-039). */
-    static readonly requires: {
-        readonly executionPath: "line";
-    };
-    /** The schema its headers are read by (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        executionPath: z.ZodString;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all (FR-002): where
-     *  its assets are copied is a link to a script's folder, written as the
-     *  projection lays it. */
-    static readonly activatesWhen: string;
-    /** A script as an author writes one: what a refused header is fixed with. */
-    static readonly sample: ScriptHeaders;
-    /** One script, or every fault its headers have (FR-004). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): ScriptPrimitive;
-    /** The asset that runs, as a path inside its folder: `run.sh` of
-     *  `./run.sh`. */
-    get executionPathInFolder(): string;
-    /** Whether an asset of it is the one its `executionPath` names: the one
-     *  run by its path, and no other (FR-160). */
-    isExecutionFile(filePath: string): boolean;
-}
-
-/** The events a charter knows how to be raised by, and the only ones a sensor
- *  may name (FR-004).
- *
- *  Closed the way the kinds are: a name outside it is a sensor nothing will
- *  ever fire, and saying so where the file is read is the one place an author
- *  finds out. An agent that raises none of them compiles no hook for it, which is
- *  that agent's to say and not this list's. */
-declare const SIGNALS: readonly ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop", "SubagentStop", "PreCompact", "SessionStart", "SessionEnd", "PermissionRequest", "SubagentStart", "PostCompact"];
-
-/** A command the agent's own harness runs when a signal fires (FR-004). */
-type SensorHeaders = Readonly<z.infer<typeof SensorPrimitive.schema>>;
-
-declare class SensorPrimitive extends AgentBasedPrimitive {
-    static get signals(): typeof SIGNALS;
-    readonly headers: SensorHeaders;
-    static readonly kind: "sensor";
-    readonly kind: "sensor";
-    /** What this kind requires beyond the common headers, declared where its
-     *  contract is: it is read both where a file is checked and where one is
-     *  scaffolded (FR-004, FR-039). */
-    static readonly requires: {
-        readonly signal: "line";
-        readonly run: "line";
-    };
-    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-     *  against, and what says the shape of every header this kind takes, required
-     *  or not (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        "agent-provider": z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        signal: z.ZodEnum<{
-            PreToolUse: "PreToolUse";
-            PostToolUse: "PostToolUse";
-            UserPromptSubmit: "UserPromptSubmit";
-            Stop: "Stop";
-            SubagentStop: "SubagentStop";
-            PreCompact: "PreCompact";
-            SessionStart: "SessionStart";
-            SessionEnd: "SessionEnd";
-            PermissionRequest: "PermissionRequest";
-            SubagentStart: "SubagentStart";
-            PostCompact: "PostCompact";
-        }>;
-        run: z.ZodString;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all, said
-     *  where the kind's contract is: the neutral surface lists one
-     *  line per kind and none of them is written down twice (FR-002). */
-    static readonly activatesWhen = "the `signal` it names is raised, and the harness runs what it says to `run`";
-    /** A sensor as an author writes one: what a refused header is fixed with. */
-    static readonly sample: SensorHeaders;
-    /** One sensor, or every fault its headers have (FR-004). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): SensorPrimitive;
-}
-
-/** Know-how loaded when a request matches its triggers (FR-004). */
-type SkillHeaders = Readonly<z.infer<typeof SkillPrimitive.schema>>;
-
-declare class SkillPrimitive extends BasePrimitive {
-    readonly headers: SkillHeaders;
-    static readonly kind: "skill";
-    readonly kind: "skill";
-    /** What this kind requires beyond the common headers, declared where its
-     *  contract is: it is read both where a file is checked and where one is
-     *  scaffolded (FR-004, FR-039). */
-    static readonly requires: {
-        readonly triggers: "list";
-    };
-    /** The schema its headers are read by: what `BasePrimitive.headersOf` refuses a file
-     *  against, and what says the shape of every header this kind takes, required
-     *  or not (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        triggers: z.ZodReadonly<z.ZodArray<z.ZodString>>;
-        "disable-user-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
-        "disable-model-invocation": z.ZodOptional<z.ZodPipe<z.ZodUnknown, z.ZodTransform<boolean, unknown>>>;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all, said
-     *  where the kind's contract is: the neutral surface lists one
-     *  line per kind and none of them is written down twice (FR-002). */
-    static readonly activatesWhen = "one of its `triggers` matches what is being asked";
-    /** A skill as an author writes one: what a refused header is fixed with. */
-    static readonly sample: SkillHeaders;
-    /** What this is found by: what it is for, and the requests its author said
-     *  bring it up. */
-    composeDescription(): string;
-    /** One skill, or every fault its headers have (FR-004). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): SkillPrimitive;
-}
-
-/** A file the agent fills or copies, written as its body. Beyond the common
- *  headers it asks for nothing: the agent reads what kind of file it is off
- *  the body itself (FR-158). */
-type TemplateHeaders = Readonly<z.infer<typeof TemplatePrimitive.schema>>;
-
-declare class TemplatePrimitive extends BasePrimitive {
-    readonly headers: TemplateHeaders;
-    static readonly kind: "template";
-    readonly kind: "template";
-    /** What this kind requires beyond the common headers: nothing. Declared all
-     *  the same, since what a file is scaffolded with is read off this (FR-039). */
-    static readonly requires: {};
-    /** The schema its headers are read by (FR-004). */
-    static readonly schema: z.ZodObject<{
-        id: z.ZodString;
-        description: z.ZodString;
-        tags: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        globs: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-        rationale: z.ZodOptional<z.ZodString>;
-        mixins: z.ZodOptional<z.ZodReadonly<z.ZodArray<z.ZodString>>>;
-    }, z.core.$strip>;
-    /** When a reader of this charter is to open this kind at all (FR-002). */
-    static readonly activatesWhen = "a primitive names it as `[[<id>]]` \u2014 a file the agent fills or copies, written as its body";
-    /** A template as an author writes one: what a refused header is fixed with. */
-    static readonly sample: TemplateHeaders;
-    /** One template, or every fault its headers have (FR-004). */
-    static of(headerRecord: Readonly<Record<string, unknown>>, body: string, assets?: readonly AssetFile[], primitiveLayer?: PrimitiveLayer, keptUri?: string): TemplatePrimitive;
-}
-
-/** The classes, one per kind. Adding a kind is a file beside them and a line here; what
- *  the kinds are is read back off this list rather than written down twice. */
-declare const PRIMITIVE_CLASSES: readonly [typeof GuidePrimitive, typeof SensorPrimitive, typeof SkillPrimitive, typeof PlaybookPrimitive, typeof AgentPrimitive, typeof PosturePrimitive, typeof CorpusPrimitive, typeof MixinPrimitive, typeof McpPrimitive, typeof ScriptPrimitive, typeof TemplatePrimitive];
-
-/**
- * A primitive of any kind, discriminated on `kind`: reading
- * `headers.globs` compiles on a guide and nowhere else.
- *
- * Each kind is a class of its own, holding what it requires of a file and
- * refusing one that does not hold it, so having a `Primitive` is the promise
- * that the kind's contract holds (FR-004). Read off what those classes return
- * rather than listed again: a constructor is protected, so `of` is the only way
- * one comes into being, and what it hands back is what a primitive is.
- */
-type Primitive = ReturnType<(typeof PRIMITIVE_CLASSES)[number]["of"]>;
-
-/** The primitive kinds, each read off the class that reads it. The set is
- *  closed: any other value is a fault naming the file and the offending kind
- *  (FR-001). */
-declare const KINDS: readonly ("agent" | "corpus" | "guide" | "mcp" | "mixin" | "playbook" | "posture" | "script" | "sensor" | "skill" | "template")[];
-
-type Kind = (typeof KINDS)[number];
-
-/** One header a kind's author may answer for: the shape the answer takes,
- *  whether a file written without it is refused, and — where the kind reads it
- *  from a closed set — the values it may hold. What is asked before a file of
- *  this kind can be written, and what is refused where a file was written
- *  without it — one declaration, read twice. */
-declare class PrimitiveHeader {
-    readonly field: string;
-    readonly shape: "line" | "list";
-    readonly isRequired: boolean;
-    /** Every value the kind reads this header as, where the set is closed — a
-     *  sensor's `signal` — so it is chosen rather than typed (FR-118). A header
-     *  whose set is open has none. */
-    readonly allowedValues?: readonly string[] | undefined;
-    constructor(field: string, shape: "line" | "list", isRequired: boolean, 
-    /** Every value the kind reads this header as, where the set is closed — a
-     *  sensor's `signal` — so it is chosen rather than typed (FR-118). A header
-     *  whose set is open has none. */
-    allowedValues?: readonly string[] | undefined);
-}
-
-/** Every kind of primitive the charter knows, and how a primitive is read, made and named. */
-declare class Primitives {
-    static get classes(): typeof PRIMITIVE_CLASSES;
-    static get kinds(): typeof KINDS;
-    /** An id as someone typed it, at a command or in a request, held to the shape
-     *  an id is written in: text that is not one names nothing to look for
-     *  (FR-172). */
-    static idOf(typedId: string): string;
-    static isKind(kindName: unknown): kindName is Kind;
-    /**
-     * Every header one kind takes: what every primitive declares, and what this
-     * kind's own contract adds on top of it — each with the shape it holds and
-     * whether the kind refuses a file without it (FR-004, FR-039).
-     *
-     * Read off the kind's own class rather than listed again here, so a kind that
-     * grows a header is asked for it without anything else being told. The shape
-     * comes off the schema a file is refused against, so a header a kind takes
-     * without requiring — a guide's globs — is written the shape it is read as, and
-     * whoever answers one reads the same contract that refuses it.
-     *
-     * `kind` and `id` are not among them: the first is what is being asked about
-     * and the second is what the primitive is to be called, so both are known
-     * before there is anything to ask.
-     */
-    static headersOf(kind: Kind): readonly PrimitiveHeader[];
-    /** One primitive of this kind as its own class declares one, written out the
-     *  way a file holds it — the kind first, since it is what decides how the rest
-     *  is read. What an author is shown beside the headers they are to answer, and
-     *  the same sample a refused file is held up against (FR-001). */
-    static sampleOf(kind: Kind): string;
-    private constructor();
-}
-
-/** One suite of self-regression tests as what keeps them keeps it, before the
- *  engine reads it: the name it is asked for by (`untitled-1.json`, FR-124),
- *  what it holds, and where it is kept, said back and never read
- *  (CORE-FR-213). */
-declare class RawTestSuite {
-    readonly name: string;
-    /** The charter it is kept in (VENDOR-FR-009). */
-    readonly charterName: string;
-    readonly text: string;
-    readonly uri: string;
-    constructor(name: string, 
-    /** The charter it is kept in (VENDOR-FR-009). */
-    charterName: string, text: string, uri: string);
-}
-
-/**
- * What a case may say (FR-047).
- *
- * Three shapes, and only three, because only three things about a charter are
- * decided without an agent: a touched file matches a guide's globs, a raised
- * event is the one a sensor names, and a touched file is denied by a posture.
- * Everything else a charter holds — which skill a request wants, which agent
- * gets delegated to — is the agent's reading of words and not this engine's, so
- * it is not something a test here can assert (FR-049).
- *
- * A primitive is named by its id, the way the whole charter names one
- * (FR-172) — checked here against what an author typed rather than against
- * what a primitive declared. Every object is strict, and that is what closes the
- * set: a case holding both a `do` and a `when` is no branch of this union, and
- * neither is one raising an event and expecting a permission — an event touches no file for the charter
- * to allow or refuse. So the shapes nothing could ever answer do not exist to
- * be handled.
- */
-declare const TestCaseSchema: z.ZodUnion<readonly [z.ZodObject<{
-    do: z.ZodObject<{
-        touchFile: z.ZodString;
-    }, z.core.$strict>;
-    expect: z.ZodUnion<readonly [z.ZodObject<{
-        activate: z.ZodString;
-    }, z.core.$strict>, z.ZodObject<{
-        allow: z.ZodBoolean;
-    }, z.core.$strict>]>;
-}, z.core.$strict>, z.ZodObject<{
-    when: z.ZodEnum<{
-        PreToolUse: "PreToolUse";
-        PostToolUse: "PostToolUse";
-        UserPromptSubmit: "UserPromptSubmit";
-        Stop: "Stop";
-        SubagentStop: "SubagentStop";
-        PreCompact: "PreCompact";
-        SessionStart: "SessionStart";
-        SessionEnd: "SessionEnd";
-        PermissionRequest: "PermissionRequest";
-        SubagentStart: "SubagentStart";
-        PostCompact: "PostCompact";
-    }>;
-    expect: z.ZodObject<{
-        run: z.ZodString;
-    }, z.core.$strict>;
-}, z.core.$strict>]>;
-
-/**
- * One situation a test pins down, and what the charter is expected to make of
- * it (FR-047).
- *
- * A class rather than the record the schema read, because two things are asked
- * of a case wherever one turns up — the situation it puts, which a run reports
- * it under, and the id it names, which an explanation finds it by
- * (FR-014, FR-048) — and neither is worth working out from the three shapes
- * twice. Every case the schema reads is made one, so nothing downstream meets
- * the record on its own.
- *
- * What was written is kept as it was read: which of the three shapes a case is
- * decides how it resolves, and that is the resolver's question to ask of it.
- */
-declare class TestCase {
-    readonly writtenCase: z.infer<typeof TestCaseSchema>;
-    static get schema(): typeof TestCaseSchema;
-    constructor(writtenCase: z.infer<typeof TestCaseSchema>);
-    /** The situation it puts, said as a line, and what it expects of it: what a
-     *  run reports it under, and what an explanation names it by (FR-048,
-     *  FR-014). */
-    describeCase(): string;
-    /** The situation it puts: the file it touches, or the event it raises. */
-    get situation(): string;
-    /** What it expects the charter to make of its situation. */
-    get expectation(): string;
-    /**
-     * Which primitive this case expects to be activated: the sensor a raised event
-     * is expected to run, or the guide a touched file is expected to bring up
-     * (FR-014).
-     *
-     * Nothing for the third shape. That one expects a touched file to be allowed
-     * or denied, which every posture in the charter answers between them, so it
-     * activates no one primitive by name.
-     */
-    get activatedId(): string | undefined;
-}
-
-/**
- * What a test file may hold, as the one shape everything else reads it through
- * (FR-047).
- *
- * Not a primitive, and nothing compiles it. A charter is what an agent is
- * instructed by; this is what says the charter still does what it did, so it
- * lives beside the charter rather than in it and is read only when tests run.
- * That is why it is JSON and not a document with frontmatter: nobody reads it
- * but `cw test`, and there is no body for an agent to open.
- */
-declare const TestSuiteSchema: z.ZodObject<{
-    description: z.ZodOptional<z.ZodString>;
-    cases: z.ZodArray<z.ZodPipe<z.ZodUnion<readonly [z.ZodObject<{
-        do: z.ZodObject<{
-            touchFile: z.ZodString;
-        }, z.core.$strict>;
-        expect: z.ZodUnion<readonly [z.ZodObject<{
-            activate: z.ZodString;
-        }, z.core.$strict>, z.ZodObject<{
-            allow: z.ZodBoolean;
-        }, z.core.$strict>]>;
-    }, z.core.$strict>, z.ZodObject<{
-        when: z.ZodEnum<{
-            PreToolUse: "PreToolUse";
-            PostToolUse: "PostToolUse";
-            UserPromptSubmit: "UserPromptSubmit";
-            Stop: "Stop";
-            SubagentStop: "SubagentStop";
-            PreCompact: "PreCompact";
-            SessionStart: "SessionStart";
-            SessionEnd: "SessionEnd";
-            PermissionRequest: "PermissionRequest";
-            SubagentStart: "SubagentStart";
-            PostCompact: "PostCompact";
-        }>;
-        expect: z.ZodObject<{
-            run: z.ZodString;
-        }, z.core.$strict>;
-    }, z.core.$strict>]>, z.ZodTransform<TestCase, {
-        do: {
-            touchFile: string;
-        };
-        expect: {
-            activate: string;
-        } | {
-            allow: boolean;
-        };
-    } | {
-        when: "PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "Stop" | "SubagentStop" | "PreCompact" | "SessionStart" | "SessionEnd" | "PermissionRequest" | "SubagentStart" | "PostCompact";
-        expect: {
-            run: string;
-        };
-    }>>>;
-}, z.core.$strict>;
-
-/** One test file, as `TestSuiteSchema` read it (FR-047): what it is about, the
- *  cases it pins down, and the body it was read from, as its author wrote it
- *  and the editor shows it (FR-124). Made by `TestSuiteFactory.create` and by
- *  nothing else. */
-declare class TestSuite {
-    readonly description: string | undefined;
-    readonly cases: readonly TestCase[];
-    readonly body: string;
-    static get schema(): typeof TestSuiteSchema;
-    static get defaultBody(): typeof DEFAULT_TEST_SUITE_BODY;
-    /** A suite that reads, said on one line: what a file the schema refused is
-     *  shown. */
-    static get sampleText(): typeof SAMPLE;
-    constructor(description: string | undefined, cases: readonly TestCase[], body: string);
-}
-
-declare const SAMPLE: string;
-
-/** What a new test file holds: a description and the first case of the sample,
- *  so it reads as a suite from the start and its author edits rather than
- *  looks the format up (FR-091). */
-declare const DEFAULT_TEST_SUITE_BODY: string;
-
-/**
- * Where `cw`'s own store keeps a repository's charter, each folder by its path
- * from the repository's root, and nothing of where the repository is
- * (CORE-FR-217, CORE-FR-224). The one place that layout is known, as
- * `OutputPath` is the output's: a store of an integrator's own keeps the
- * charter in a layout of its own, and says where an author edits it
- * (SDK-FR-020, CORE-FR-213).
- */
-declare class CharterPath {
-    /** Where a repository keeps everything this engine reads and writes (plan
-     *  §3): what it configured itself with, the charter it authored, and what
-     *  the charter compiles to, so the three are under one folder rather than
-     *  three that drift. */
-    readonly workspaceFolderPath = ".cw";
-    /** The charter root, the only part of the workspace a person authors: one
-     *  folder per charter, `.cw/charter/<charter>/`, each holding its
-     *  primitives, test cases and eval cases (CORE-FR-224, VENDOR-FR-009). */
-    readonly charterFolderPath: string;
-    /** Where the charters of a source are checked out before any charter the
-     *  charter root holds is replaced, so a source refused while copied
-     *  replaces nothing; taken away once the install is over (VENDOR-FR-017). */
-    readonly installingFolderPath: string;
-    /** The folder of a charter holding its primitives, a folder per kind:
-     *  `.cw/charter/<charter>/primitive/<kind>/<id>/` (VENDOR-FR-009). */
-    readonly primitivesFolderName = "primitive";
-    /** The file that makes a charter installed, read-only: where it came from
-     *  (VENDOR-FR-010). */
-    readonly installedCharterRecordFileName = "cw-package.json";
-    /** The folder of a charter holding its test cases, one file of cases each
-     *  (VENDOR-FR-009). */
-    readonly testFolderName = "test";
-    /** The folder an older layout kept installed charters in, right under the workspace
-     *  or the charter root: refused where it is still held (VENDOR-FR-011). */
-    readonly oldInstalledChartersFolderName = "vendor";
-    /** The folder of a charter holding its eval cases, one file of cases each
-     *  (VENDOR-FR-009). */
-    readonly evalFolderName = "eval";
-}
-
-/**
- * One item of what a build compiles to: its text (CORE-FR-220). Every item of
- * a `CharterOutput` is one of these — the catalogues, `CHARTER.md`, the mcp
- * origins, the built sensors and each compiled primitive — each made by its
- * own factory.
- *
- * Where it lands inside the output, and how another item's text names it, is
- * `OutputPath`'s; where the output lands is the projection's (CORE-FR-221).
- */
-declare abstract class CharterOutputItem {
-    /** What it holds, as a build lays it. */
-    abstract get text(): string;
-}
-
-/**
- * Where each item of the compiled output lands inside it, and how one item's
- * text names another (CORE-FR-220, CORE-FR-221). The one place the output's
- * layout is known: an item is what it holds, and its path is asked of this.
- *
- * Where the output itself lands is no part of the engine's, so every path
- * into it is written under `cwOutFolderPlaceholder`, and whoever lays or
- * reads the output says where that is.
- */
-declare class OutputPath {
-    /** What every path into the output starts with, in place of the folder it
-     *  lands in. */
-    readonly cwOutFolderPlaceholder = "$CW_OUT";
-    /** The file every agent's entry file sends a reader to (FR-019, FR-051). */
-    readonly charterMdFileName = "CHARTER.md";
-    /** The mcp origins the last build listed (FR-145). */
-    readonly mcpOriginsFileName = "mcp-origins.json";
-    /** The sensors the last build compiled (FR-179). */
-    readonly sensorsFileName = "sensors.json";
-    /** Where this item lands inside the output, by what it is. */
-    getPath(charterOutputItem: CharterOutputItem): string;
-    /** A catalogue's file: the listing every agent shares, `catalogue.json`, or
-     *  one agent's own, named by the agent (FR-011). */
-    getCatalogueFileName(agentName?: string): string;
-    /** Where the compiled primitive of this kind and id lands, every agent's:
-     *  `guide/no-any/index.md`. */
-    getCompiledPrimitivePath(kind: string, id: string): string;
-    /** This item named in another's text, as `getLinkTo` names its path. */
-    getLink(charterOutputItem: CharterOutputItem, suffix?: string): string;
-    /**
-     * The item at `path` named in another's text, where that item is not in
-     * hand: `$CW_OUT/` and its path inside the output, then on by `suffix`, a
-     * path from the item's own folder, where one is given: `./` or `../` before
-     * it read as a link reads it, every character of it a URL's, a file's name
-     * beside it otherwise.
-     */
-    getLinkTo(path: string, suffix?: string): string;
-}
-
-/**
- * The charter module's constants: the layout of the store `cw` keeps the
- * charter root in, which a source keeps its charters in too, and of the output, each
- * one value, and nothing of
- * where the repository is (CORE-FR-215, CORE-FR-217).
- */
-
-/** The layout of the store `cw` keeps the charter in, made once: every folder
- *  of it is asked of this (CORE-FR-224, SDK-FR-020). */
-declare const charterPath: CharterPath;
-
-/** The output's layout, made once: every path into the compiled output, and
- *  every link from one of its items to another, is asked of it (CORE-FR-220,
- *  CORE-FR-221). */
-declare const outputPath: OutputPath;
-
-/**
- * One file a build has decided about, before anything on disk moves.
- *
- * Where it goes, what it would hold once the build is done, and what is there
- * now — so what a build would do to it is read off the plan rather than worked
- * out again against disk (FR-022).
- */
-declare class WritePlan {
-    /** Where it sits, at its path from what is built — the repository, or a
-     *  checkout of it: what a build says it did. */
-    readonly path: string;
-    /** Where it sits, at its path from the repository: where it is written. */
-    readonly filePath: string;
-    /** What the build would leave in it, or nothing where the plan is to take
-     *  it away. */
-    readonly contents?: string | Uint8Array | undefined;
-    /** What it holds now, or nothing where there is no such file yet: its
-     *  bytes where it is a copy, which are what it is compared by
-     *  (CORE-FR-207). */
-    readonly heldContents?: string | Uint8Array | undefined;
-    /** Run by its path once it is down: a built script (FR-160). */
-    readonly isExecutable?: boolean | undefined;
-    constructor(
-    /** Where it sits, at its path from what is built — the repository, or a
-     *  checkout of it: what a build says it did. */
-    path: string, 
-    /** Where it sits, at its path from the repository: where it is written. */
-    filePath: string, 
-    /** What the build would leave in it, or nothing where the plan is to take
-     *  it away. */
-    contents?: string | Uint8Array | undefined, 
-    /** What it holds now, or nothing where there is no such file yet: its
-     *  bytes where it is a copy, which are what it is compared by
-     *  (CORE-FR-207). */
-    heldContents?: string | Uint8Array | undefined, 
-    /** Run by its path once it is down: a built script (FR-160). */
-    isExecutable?: boolean | undefined);
-}
-
-/** One folder a plan puts down as a source holds it, every file under it at
- *  any depth, replacing whatever that folder held (CORE-FR-042). */
-declare class CopyPlan {
-    /** Where it sits in the source it is copied from, the empty path its
-     *  root. */
-    readonly sourcePath: string;
-    /** Where it lands, at its path from the repository. */
-    readonly destinationPath: string;
-    constructor(
-    /** Where it sits in the source it is copied from, the empty path its
-     *  root. */
-    sourcePath: string, 
-    /** Where it lands, at its path from the repository. */
-    destinationPath: string);
-}
-
-/** One reading of a charter, or of an installed charter's source, said as what it would
- *  do to disk: a build writes each file, an install copies a folder too. */
-declare class ProjectionPlan<Plan extends WritePlan | CopyPlan = WritePlan> {
-    readonly warnings: readonly string[];
-    /** What the last build left, whether this one writes it again or not; or
-     *  what an install takes away once it is down. */
-    readonly cleanupPlan: readonly WritePlan[];
-    /** Everything this reading would put down, in order. */
-    readonly writePlans: readonly Plan[];
-    constructor(warnings: readonly string[], 
-    /** What the last build left, whether this one writes it again or not; or
-     *  what an install takes away once it is down. */
-    cleanupPlan: readonly WritePlan[], 
-    /** Everything this reading would put down, in order. */
-    writePlans: readonly Plan[]);
-}
-
-/** What an adapter answering this port raises when git refuses, named again
- *  here so it names this port and nothing behind it. */
-
-/**
- * DRIVEN PORT — reaching a source. How it is answered — a git command today, a
- * library or a test's own answer tomorrow — is the adapter's business.
- *
- * The folder a source lands in need not be a repository: nothing here needs a
- * repository, and nothing here writes to one (CORE-FR-205).
- */
-interface ForFetchingCharterSources {
-    /**
-     * Fetch this source, at this version where one is named, and answer the
-     * commit fetched: what the other questions about a source are asked of, so it
-     * is fetched once. Its text is the adapter's own, for this port alone to
-     * read. Nothing in the repository is touched; it is only what a relative source is
-     * read from, and whose own version control settings reach it, where it has
-     * any. Whoever fetched it says `removeFetchedCommit` when done.
-     *
-     * A source that cannot be reached, a version that is not there, and a machine
-     * that cannot fetch at all each raise an `AdapterFault` saying so
-     * (CORE-FR-205).
-     */
-    fetchCommit(source: string, version?: string): Promise<string>;
-    /** The id version control gives this fetched commit, its hash: what a
-     *  charter installed with no version asked for records as its version
-     *  (VENDOR-FR-017). */
-    findCommitId(commit: string): Promise<string>;
-    /** Every file this fetched commit holds, by its path in it, at any depth, in
-     *  no promised order. */
-    listFilesAt(commit: string): Promise<readonly string[]>;
-    /** What one file of this fetched commit holds, as text. */
-    readFileAt(commit: string, path: string): Promise<string>;
-    /** What one file of this fetched commit holds, as the bytes it holds, never
-     *  decoded (CORE-FR-208). */
-    readBytesAt(commit: string, path: string): Promise<Uint8Array>;
-    /**
-     * Put one folder of this fetched commit — every file under it, at any depth —
-     * at this folder of this repository, replacing whatever that folder held and
-     * nothing beside it. The empty path is the commit's root. Nothing is staged
-     * and nothing is committed: what lands is left in the working tree for the
-     * user to read, whatever else is in hand (CORE-FR-052, CORE-FR-042).
-     */
-    checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
-    /** This fetched commit let go, with all the adapter kept to answer for it;
-     *  nothing is asked of it afterwards. */
-    removeFetchedCommit(commit: string): Promise<void>;
-}
-
-/** Keeps a repository's charter, wherever it keeps it, and knows how: its
- *  primitives, the charters it installed, its test cases and its eval cases,
- *  through this one port (CORE-FR-228), and reads back what the last build
- *  laid of it, each item known by its path inside the output, never by
- *  where the output lands (CORE-FR-221). Where a primitive, an asset of one,
- *  an installed charter or a suite sits is its own to know, never the
- *  engine's, which knows a primitive by its layer, kind and id and a suite
- *  by its name (CORE-FR-213). */
-interface ForManagingCharter {
-    /** Every primitive kept of the repository's charter, each with its assets,
-     *  in the layer of the charter it is kept in: authored, or installed where the
-     *  charter holds where it came from (VENDOR-FR-009, VENDOR-FR-010). */
-    loadCharter(): Promise<readonly RawPrimitive[]>;
-    /** Every charter kept, each with what it holds of where it came from where it
-     *  was installed (VENDOR-FR-009, VENDOR-FR-010). */
-    loadCharterMetadata(): Promise<readonly RawCharterMetadata[]>;
-    /** A place laid out for the charter root's charters, holding none: what a
-     *  repository is set up with (FR-057, VENDOR-FR-013). */
-    createCharter(): Promise<void>;
-    /** One new primitive of the repository's own layer kept, with its assets
-     *  where none stands there already, and a file already in its folder left
-     *  as one of them; its uri. Refused, with nothing written, where it is kept
-     *  already, would be kept inside another or around it, or would land outside
-     *  the charter (FR-167, CORE-FR-044). Handed the primitive as authored, which
-     *  is kept nowhere yet. */
-    addPrimitive(primitive: Primitive): Promise<string>;
-    /** Refused where the repository is laid out in a way this store no longer
-     *  keeps, naming what moves it (CORE-FR-226). */
-    assertLayout(): Promise<void>;
-    /** Where the repository's own layer is kept, said back and never read. */
-    findCharterUri(): string;
-    /** Where an author edits the charter, in this keeper's words, from the
-     *  repository's root where it keeps it there: what each agent is told to
-     *  edit, said back and never read (SDK-FR-020). */
-    describeCharterPlace(): string;
-    /** One primitive of the repository's own layer kept over what it was, its
-     *  assets as they are (FR-075). */
-    rewritePrimitive(primitive: Primitive): Promise<void>;
-    /** One primitive of the repository's own layer taken away, with its assets,
-     *  and nothing else (FR-076, FR-167). */
-    removePrimitive(primitive: Primitive): Promise<void>;
-    /** One commit of this source, at this version where one is named, fetched
-     *  and read: each charter it keeps (VENDOR-FR-017). Whoever asked says
-     *  `removeFetchedSources` once done; where it keeps none, what was fetched
-     *  is already removed. A source that cannot be reached raises an
-     *  `AdapterFault` saying so. */
-    fetchCharterSources(charterSourceOrigin: CharterSourceOrigin, version?: string): Promise<readonly CharterSource[]>;
-    /** The temporary folders these charters were fetched into, removed with all
-     *  they hold. */
-    removeFetchedSources(charterSources: readonly CharterSource[]): Promise<void>;
-    /** Each charter of a source fetched put in the repository as planned: what
-     *  its name held taken away whole, the folders of the source's charter
-     *  copied in as the source holds them, and its `cw-package.json` written, or
-     *  taken away where it keeps none (VENDOR-FR-017 to VENDOR-FR-022). Nothing
-     *  is staged and nothing committed. */
-    storeCharters(charterInstalls: readonly CharterInstall[]): Promise<void>;
-    /** Where a charter of this name is kept, in this keeper's words: said back,
-     *  never read. */
-    findCharterFolderUri(charterName: string): string;
-    /** An empty charter of this name kept, the repository's own
-     *  (VENDOR-FR-029). */
-    addCharter(charterName: string): Promise<void>;
-    /** The charter of this name taken away whole (VENDOR-FR-021, VENDOR-FR-031). */
-    removeCharter(charterName: string): Promise<void>;
-    /** Every test suite kept, by its name in its charter and that charter, with
-     *  what it holds (VENDOR-FR-009). */
-    loadTestSuites(): Promise<readonly RawTestSuite[]>;
-    /** One test suite kept under this name in this charter, as its author wrote it, over
-     *  whatever it held. */
-    writeTestSuite(charterName: string, name: string, testSuite: TestSuite): Promise<void>;
-    /** The test suite kept under this name in this charter taken away. */
-    removeTestSuite(charterName: string, name: string): Promise<void>;
-    /** Every file of evaluation cases kept, by its name in its charter and that
-     *  charter, with what it holds (VENDOR-FR-009). */
-    loadEvalSuites(): Promise<readonly RawEvalSuite[]>;
-    /** One file of evaluation cases kept under this name in this charter, as its author wrote
-     *  it, over whatever it held. */
-    writeEvalSuite(charterName: string, name: string, evalSuite: EvalSuite): Promise<void>;
-    /** The file of evaluation cases kept under this name in this charter taken away. */
-    removeEvalSuite(charterName: string, name: string): Promise<void>;
-    /** The text a build laid for the item at this path inside its output, as
-     *  it was laid; nothing where none was. */
-    readCompiledOutputItem(itemPath: string): Promise<string | undefined>;
-    /** Where the item at this path inside the output is laid, in this keeper's
-     *  words: said back where a message names it, and never read. */
-    describeItemPlace(itemPath: string): string;
-    /** A text the last build laid, each path into its output — `$CW_OUT/` and
-     *  the path inside it — written as where this keeper laid the output, as a
-     *  command of it is run (CORE-FR-221). */
-    resolveOutputLinks(laidText: string): string;
-}
-
-/** The ways a developer may sign in to an mcp origin (FR-142): what an `mcp`
- *  primitive declares, and what the list of mcp origins carries for each address.
- *  Shared by the charter and the output, as the agent providers are. */
-declare const MCP_AUTH_METHOD_NAMES: readonly ["oauth", "token"];
-
-/** One of them, as a primitive's headers and the list of mcp origins write it. */
-type McpAuthMethodName = (typeof MCP_AUTH_METHOD_NAMES)[number];
-
-/** One way a developer signs in to an mcp origin: a value, one per name. */
-declare class McpAuthMethod {
-    readonly name: McpAuthMethodName;
-    static readonly OAUTH: McpAuthMethod;
-    static readonly TOKEN: McpAuthMethod;
-    private constructor();
-    /** The way this name writes, as a primitive's headers, a DTO or a kept
-     *  credential write it. */
-    static of(methodName: McpAuthMethodName): McpAuthMethod;
-    toString(): McpAuthMethodName;
-    /** Written as its name, wherever a model holding it is written as JSON. */
-    toJSON(): McpAuthMethodName;
-    /** Every name, in the order they are offered. */
-    static get names(): typeof MCP_AUTH_METHOD_NAMES;
-}
-
-/** What an mcp origin's authorization server registered `cw` as, and which
- *  server that was: a registration is presented to the server it came from
- *  and no other. */
-declare class McpClientRegistration {
-    readonly clientId: string;
-    readonly clientSecret?: string;
-    readonly issuer: string;
-    constructor({ clientId, clientSecret, issuer, }: Pick<McpClientRegistration, "clientId" | "issuer"> & Partial<Pick<McpClientRegistration, "clientSecret">>);
-}
-
-/**
- * One developer's sign-in at one address, as the credential store keeps it.
- *
- * No DTO holds it, so no driver can show one (SC-036): it is read, and handed
- * on as the access token a call is made with.
- */
-declare class McpCredential {
-    readonly address: string;
-    readonly method: McpAuthMethod;
-    readonly accessToken: string;
-    readonly refreshToken?: string;
-    readonly expiresAt?: string;
-    readonly client?: McpClientRegistration;
-    constructor({ address, method, accessToken, refreshToken, expiresAt, client, }: Pick<McpCredential, "address" | "method" | "accessToken"> & Partial<Pick<McpCredential, "refreshToken" | "expiresAt" | "client">>);
-}
-
-/** Keeps the credentials of the mcp origins, wherever they are kept: what a
- *  credential holds is never shown, and no DTO carries one (SC-036). */
-interface ForStoringCredentials {
-    /** The credential kept under this address, or `undefined` where none is. One
-     *  that does not read as a credential is none: signing in again replaces it. */
-    readCredential(address: string): Promise<McpCredential | undefined>;
-    /** Keep this credential under its address, replacing what was there. */
-    writeCredential(credential: McpCredential): Promise<void>;
-}
-
-/**
- * One charter, read: what the engine brings, what this repository authored,
- * what it installed as charters holding a `cw-package.json`, and what any of
- * them got wrong.
- *
- * Every question about the charter as a whole is asked of it here — what a
- * primitive is named by, which mixin a name means, what is wrong once the files
- * are read together — so nothing outside joins an installed charter's name onto anything by
- * hand.
- */
-declare class CharterRoot {
-    /** Every primitive this charter holds, whichever layer authored it: what
-     *  the engine brings, what this repository wrote and what it installed as
-     *  charters holding a `cw-package.json`, each under the file it was
-     *  authored in and the layer
-     *  its layer gives it. What a primitive says is its own; where it was
-     *  written is what a fault is filed under (SC-003) and what the catalogue
-     *  records (FR-011). */
-    readonly primitives: readonly Primitive[];
-    /** The files that were meant to be primitives and could not be read as one,
-     *  and why, wherever they were. Held rather than raised: a charter is worth
-     *  having with one file broken, and the broken one is worth naming
-     *  (FR-009). */
-    readonly faultsByFiles: FaultsByFile;
-    /** The layer of everything kept, read as a primitive or not, by where it is
-     *  kept: what a fault under it is weighed by (FR-005). */
-    readonly primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>>;
-    /** Where an author edits this charter, in the words of the store keeping
-     *  it: what each agent is told to edit, never read off `cw`'s own layout
-     *  (SDK-FR-020, CORE-FR-213). */
-    readonly charterPlace: string;
-    constructor(
-    /** Every primitive this charter holds, whichever layer authored it: what
-     *  the engine brings, what this repository wrote and what it installed as
-     *  charters holding a `cw-package.json`, each under the file it was
-     *  authored in and the layer
-     *  its layer gives it. What a primitive says is its own; where it was
-     *  written is what a fault is filed under (SC-003) and what the catalogue
-     *  records (FR-011). */
-    primitives: readonly Primitive[], 
-    /** The files that were meant to be primitives and could not be read as one,
-     *  and why, wherever they were. Held rather than raised: a charter is worth
-     *  having with one file broken, and the broken one is worth naming
-     *  (FR-009). */
-    faultsByFiles: FaultsByFile, 
-    /** The layer of everything kept, read as a primitive or not, by where it is
-     *  kept: what a fault under it is weighed by (FR-005). */
-    primitiveLayerByUri: Readonly<Record<string, PrimitiveLayer>>, 
-    /** Where an author edits this charter, in the words of the store keeping
-     *  it: what each agent is told to edit, never read off `cw`'s own layout
-     *  (SDK-FR-020, CORE-FR-213). */
-    charterPlace: string);
-    /** Everything wrong with this charter, under the file that has to change: the
-     *  files that could not be read as a primitive at all, and what the ones that
-     *  were read get wrong together. The two never name one file — a file reading
-     *  refused holds no primitive to get anything else wrong — so one asking is
-     *  the whole answer (FR-009). */
-    get allFaultsByFiles(): FaultsByFile;
-    /**
-     * Every primitive under the id the whole charter names it by (FR-015,
-     * FR-017).
-     *
-     * One id space covers every layer and every kind, so which file declares a
-     * name is a question about the whole charter and not about any one layer.
-     * The first claim on an id is the one in here where two files claim it: a
-     * collision is what `compositeFaultsByFiles` is for, and it names both files
-     * there; nothing is asked to explain a charter that has one (SC-006).
-     */
-    /** Every primitive naming an agent outside `agentNames`, the agents the
-     *  charter can be compiled for, under the file that has to change: in the
-     *  agents it is for, or in the model it runs on (FR-033). */
-    agentFaultsByFilesOf(agentNames: readonly string[]): FaultsByFile;
-    get primitiveById(): ReadonlyMap<string, Primitive>;
-    /** Every mixin one primitive uses, in the order it named them (FR-014). A
-     *  name nothing answers to, or that answers with another kind, is left out:
-     *  `compositeFaultsByFiles` already names that file as an error. */
-    mixinsOf(pullingPrimitive: Primitive): readonly Primitive[];
-    /** The corpus one primitive cites as its rationale, or nothing where it cites
-     *  none or cites one this charter does not hold as a corpus — which
-     *  `compositeFaultsByFiles` already names (FR-005, FR-014). */
-    rationaleOf(citingPrimitive: Primitive): Primitive | undefined;
-    /** Every primitive that pulls one mixin in; nothing for any other kind
-     *  (FR-014). */
-    pullersOf(mixin: Primitive): readonly Primitive[];
-    /** Every primitive citing one corpus as its rationale; nothing for any other
-     *  kind (FR-014). */
-    citersOf(corpus: Primitive): readonly Primitive[];
-    /** Every primitive naming one, as `[[<id>]]` (FR-144, FR-163, FR-172). */
-    mentionersOf(referencedPrimitive: Primitive): readonly Primitive[];
-    /** Every id one primitive names, whether the charter holds it or not: as
-     *  `[[<id>]]`, as an mcp origin among its tools, as a script its `run`
-     *  names, as a mixin it pulls in, or as its rationale — what a charter
-     *  including another is read off (VENDOR-FR-018). */
-    namedIdsOf(namingPrimitive: Primitive): readonly string[];
-    /** The ids one primitive names as `[[<id>]]`, whether the charter holds them
-     *  or not: in its body (FR-143, FR-172); for an agent, each mcp origin it holds by
-     *  listing it among its tools (FR-156); and for a sensor, each script its
-     *  `run` names (FR-161). */
-    private findMentionedIds;
-    /** Does what a mixin lends reach as far as the primitive pulling it in, or
-     *  that primitive no further than the mixin? A side that names no files is asking about
-     *  nothing in particular, and is left alone (FR-006). */
-    private isMixinReaching;
-    /**
-     * What is wrong with this charter that is wrong with no one file on its own,
-     * under the file that has to change (FR-009).
-     *
-     * Reading refused the files whose own headers do not hold, and said so where
-     * it read them; what is left are the questions no single file answers. Every
-     * layer is read into one id space, the way one registry holds one name
-     * per package: two files claim one id; one names a mixin nothing
-     * answers to; one pulls in a mixin that speaks about other files than it does
-     * — a mixin lends its body at projection time, so what makes the two belong
-     * together is the files they both apply to (FR-006, FR-014). One cites a
-     * rationale no corpus answers to, which is a warning rather than an error:
-     * the rule holds without its reasoning, and the author is told the reasoning
-     * is gone (FR-005). A corpus nobody cites and a mixin nobody pulls in are
-     * warnings too: nothing breaks, and nothing reads them either (FR-014). So
-     * are an mcp nothing names (FR-144) and a script or a template nothing names
-     * (FR-163). A name no layer holds is an error (FR-162), and so are an agent
-     * holding a tool its mcp does not declare — the role would be promised a
-     * tool it cannot have (FR-156) — and a script whose `executionPath` names
-     * no asset of it (FR-165).
-     */
-    get compositeFaultsByFiles(): FaultsByFile;
-}
-
 /**
  * DRIVER PORT — projecting the charter: the charter charter authoring keeps,
  * built and laid onto each agent the repository chose; the build and
@@ -4864,738 +5598,4 @@ interface ForBuildingCharter {
      *  named charter's alone; a charter named that the charter does not hold is
      *  refused naming those it does (VENDOR-FR-025, VENDOR-FR-026). */
     listEvalCases(charterName?: string): Promise<CharterDTOs.EvalCases | FaultDTOs.FaultsByFile | FaultDTOs.Fault>;
-}
-
-/**
- * DRIVEN PORT — a tokenizer that runs on this machine. The hexagon hands it a
- * text and is told how many tokens that text is; which tokenizer answers, and
- * how, is the adapter's business.
- *
- * No tokenizer of the model an agent runs on is at hand offline, so what this
- * answers is an estimate of that model's count, and whoever says the number
- * says so (EVAL-FR-002).
- */
-interface ForCountingTokens {
-    /** How many tokens this text is, to the tokenizer behind this port. */
-    countTokens(text: string): number;
-}
-
-/**
- * Everything one reading of a charter compiles to (FR-021): the items a
- * build lays, naming no place but inside the compiled output — where the
- * output lands, and what each agent reads of it, is each projection's
- * (CORE-FR-220, CORE-FR-221).
- *
- * What every reader of the charter gets is among them whether an agent is
- * installed or not: the listing, and the file that orients a reader to it
- * (FR-019). What the agents this repository runs get is each agent's own
- * listing among them, and the rest its projection makes of them (FR-018).
- */
-declare class CharterOutput {
-    #private;
-    /** One more item, laid after those already added (FR-020, FR-021). */
-    add(charterOutputItem: CharterOutputItem): void;
-    /** Every item, in the order a build lays them. */
-    get charterOutputItems(): readonly CharterOutputItem[];
-    /** The one item of a class it holds: a build adds each such item once, so
-     *  one missing is the engine's own fault, never the person's. */
-    findCharterOutputItem<Item extends CharterOutputItem>(itemClass: abstract new (...itemArguments: any[]) => Item): Item;
-}
-
-/**
- * What one primitive, or the charter itself, puts into an agent's main
- * context, as the text the agent is sent: when a session opens, or — where it
- * names `globs` — when a file they match is touched (EVAL-FR-001,
- * EVAL-FR-003). `id` is the primitive's, or, for what the charter puts there
- * itself, the file it is laid at.
- *
- * Its text is as it is laid: an agent reads what is laid, and what that is
- * is the agent's projection's to say (CORE-FR-221).
- */
-declare class MainContextText {
-    readonly id: string;
-    readonly kind: string;
-    readonly text: string;
-    readonly globs?: readonly string[] | undefined;
-    constructor(id: string, kind: string, text: string, globs?: readonly string[] | undefined);
-}
-
-/**
- * A document this engine wrote, saying so in itself (FR-017, FR-020).
- *
- * A build takes away what it no longer compiles, and where it looks is a
- * directory an agent reads — the same directory someone may have written a command
- * or a skill of their own into, by hand, long before a charter was ever built
- * here. A path is not enough to tell the two apart, and guessing wrong destroys
- * someone's work. So a file this build puts down carries a stamp, and a build
- * deletes nothing that does not.
- *
- * It doubles as what a reader needs: a compiled file someone opens says where to
- * go and change it, rather than being edited into something the next build
- * undoes.
- *
- * Only what is written as prose can carry one. A listing is JSON and has nowhere
- * to say it, and an agent's settings file is the repository's as much as this
- * engine's — those two are known by where they are instead.
- */
-declare const GENERATED_STAMP = "Generated by cherry-works";
-
-/**
- * One document with the stamp on the end of it: making one is stamping it.
- *
- * The one way any output of this engine becomes the text of a document, so every
- * one of them carries the stamp and none of them has to remember to. What the
- * document says above it is whoever compiled it; this adds the line and nothing
- * else.
- */
-declare class StampedDocument {
-    /** The document's text, the stamp on the end of it. */
-    readonly text: string;
-    constructor(document: string);
-    /** The stamp alone, as it ends every stamped document. */
-    static get footer(): string;
-    /** The words of the stamp, for a document that is no prose and says it
-     *  another way. */
-    static get stampText(): typeof GENERATED_STAMP;
-}
-
-/**
- * One file an agent reads, whichever agent: what it is and what it holds, so
- * laying it knows nothing of the agent that asked for it but its kind there
- * and its id (FR-018).
- *
- * An agent's file is a document (`DocumentBasedComponent`) or settings
- * (`SettingBasedComponent`); each of an agent's own kinds extends one of the two.
- * Where it lands, and how it goes over what is there, is its agent's
- * projection's (CORE-FR-221).
- */
-declare abstract class ProviderComponent {
-    /** The agent that reads it. */
-    readonly agentProvider: AgentProvider;
-    /** The kind of the primitive it was compiled from, or `charter` where it
-     *  is the whole charter's. */
-    readonly primitiveKind: string;
-    /** What that agent knows it by: the name it is called, or, for a file of
-     *  the whole charter, the folder it is for or the part it plays. */
-    readonly id: string;
-    /** The whole of what the file holds, or of this engine's part of it, each
-     *  path into the compiled output under `$CW_OUT/`. */
-    readonly text: string;
-    readonly warnings: readonly string[];
-    constructor(
-    /** The agent that reads it. */
-    agentProvider: AgentProvider, 
-    /** The kind of the primitive it was compiled from, or `charter` where it
-     *  is the whole charter's. */
-    primitiveKind: string, 
-    /** What that agent knows it by: the name it is called, or, for a file of
-     *  the whole charter, the folder it is for or the part it plays. */
-    id: string, 
-    /** The whole of what the file holds, or of this engine's part of it, each
-     *  path into the compiled output under `$CW_OUT/`. */
-    text: string, warnings?: readonly string[]);
-    /** Which of its agent's kinds this is. Each class declares it as a literal. */
-    abstract readonly kind: string;
-}
-
-/** A document this agent reads no frontmatter of: the file it loads whole,
- *  whatever is in it. Its whole content is the body. */
-type NoHeaders = Record<string, never>;
-
-/**
- * One file an agent reads as a document: frontmatter, then a body (FR-018).
- *
- * The other side of the compilation. A charter is what an author wrote — the
- * kinds, in the charter's words; this is what one agent reads — its kinds, in
- * its words. Between the two sits a compiler, and the two never meet anywhere
- * else: a `guide` becomes a claude skill there and nowhere in the charter, and
- * the charter does not know this file exists.
- *
- * A document is frontmatter this agent reads first and a body it opens once that
- * frontmatter says to. A kind of this agent that is one is a class extending this,
- * declaring — in an interface of its own — what its frontmatter holds; a kind
- * whose file this agent reads whole declares none and is body alone.
- *
- * A document carries what it is called, since that is part of what it is, and
- * the kind of primitive it was compiled from. Where it goes is its agent's
- * projection's (CORE-FR-221).
- */
-declare abstract class DocumentBasedComponent<Headers extends object = NoHeaders> extends ProviderComponent {
-    /** What this agent calls this one: the charter id with the `/` a filename
-     *  does not carry written `-`, so `acme/review` is `acme-review` (FR-141,
-     *  FR-171). Every document has one,
-     *  whether or not that agent reads it out of the frontmatter: it is what the
-     *  file is called. */
-    readonly name: string;
-    /** What this agent reads before the body, as the kind's own interface has
-     *  it. Typed by whichever kind this is, so nothing reads a field of one
-     *  kind's frontmatter off another's. */
-    readonly headers: Headers;
-    /** What the primitive says, with the mixins it pulls in already written
-     *  into it (FR-006). */
-    readonly body: string;
-    /** The file this agent reads: its frontmatter, its body, and the stamp
-     *  saying this engine wrote it. */
-    readonly document: StampedDocument;
-    constructor(agentProvider: AgentProvider, primitiveKind: string, 
-    /** What this agent calls this one: the charter id with the `/` a filename
-     *  does not carry written `-`, so `acme/review` is `acme-review` (FR-141,
-     *  FR-171). Every document has one,
-     *  whether or not that agent reads it out of the frontmatter: it is what the
-     *  file is called. */
-    name: string, 
-    /** What this agent reads before the body, as the kind's own interface has
-     *  it. Typed by whichever kind this is, so nothing reads a field of one
-     *  kind's frontmatter off another's. */
-    headers: Headers, 
-    /** What the primitive says, with the mixins it pulls in already written
-     *  into it (FR-006). */
-    body: string);
-}
-
-/**
- * One file an agent reads as settings: JSON it shares with the repository, which
- * this engine writes its own fields into and never over (FR-018, FR-146).
- *
- * No frontmatter, no body and no stamp: JSON has nowhere to carry one, and the
- * file is the repository's as much as this engine's, so it is known by the
- * part it plays instead.
- */
-declare abstract class SettingBasedComponent<Settings extends object> extends ProviderComponent {
-    /** The fields this engine speaks for in that file. */
-    readonly settings: Settings;
-    constructor(agentProvider: AgentProvider, 
-    /** The part it plays, which is its id there: one such file to an agent. */
-    partId: string, 
-    /** The fields this engine speaks for in that file. */
-    settings: Settings);
-}
-
-/** One sensor as a build leaves it: its id, the signal it fires on, and the
- *  command that runs, each script it names written as its built file (FR-169). */
-declare class BuiltSensor {
-    readonly id: string;
-    readonly signal: string;
-    readonly "agent-provider"?: readonly AgentProvider[];
-    readonly command: string;
-    constructor(builtSensor: BuiltSensor);
-}
-
-/** Every sensor the last build compiled, in order of id: what
- *  `cw run sensor <signal> --agent <agent>` reads, since it reads no charter
- *  (FR-179). */
-declare class BuiltSensors extends CharterOutputItem {
-    readonly sensors: readonly BuiltSensor[];
-    /** The one command an agent is given for a signal its charter's sensors fire
-     *  on, naming that agent: `cw` runs every one of them kept for it (FR-175). */
-    getRunCommand(signal: string, agentProvider: AgentProvider): string;
-    constructor(sensors: readonly BuiltSensor[]);
-    /** Select only sensors that support the agent raising the signal; with no
-     *  agent named, only the sensors kept for no agent (CORE-FR-233). */
-    filterForAgent(raisingAgentProvider: AgentProvider | undefined): BuiltSensors;
-    /** What it holds: generated, and the charter's alone. Indented, since it is
-     *  committed and read in diffs when a sensor's command changes. */
-    get text(): string;
-    /** Every signal at least one sensor names, each once, in the order the
-     *  sensors name them. */
-    get signals(): readonly string[];
-}
-
-/**
- * What a charter holds, listed for whoever reads it (FR-011, FR-013).
- *
- * Output, not charter: nothing here was authored and nothing here is read back,
- * and nothing here knows what a primitive is — reading one into an entry is the
- * service's, and this is handed the list (plan §2.6).
- *
- * It says itself what it is and what it holds; where it lands is the
- * projection's (CORE-FR-221).
- *
- * Ordered by id rather than by the order the files happened to be read, so
- * the same charter catalogues byte for byte the same and a committed catalogue
- * changes only when the charter does (SC-007).
- *
- * No bodies. What a primitive says is read from the file it names,
- * when the thing it applies to comes up and not before (FR-013).
- */
-declare class Catalogue extends CharterOutputItem {
-    readonly entries: readonly CatalogueEntry[];
-    readonly agentProvider?: AgentProvider | undefined;
-    /** Entries in the order they are to be listed: by id (SC-007). */
-    constructor(entries: readonly CatalogueEntry[], agentProvider?: AgentProvider | undefined);
-    /** What it holds: the charter's own. Indented, since it is committed and
-     *  read in diffs, and a listing whose entries land one per line says what
-     *  changed in the charter rather than that the listing changed. */
-    get text(): string;
-    /**
-     * The same listing, narrowed to the primitives of one kind (FR-011).
-     *
-     * A narrowed listing is a listing: what comes back answers `entries` the way
-     * this does, so whoever reads it never has to ask whether it was narrowed. Nothing is re-sorted — the entries keep the order they were
-     * put in, which is the order by id they were made in.
-     */
-    filterByKind(kind: string): Catalogue;
-}
-
-/**
- * One primitive as the listing records it: what it is called, what it is for,
- * the files it applies to, and the file its body is in (FR-011). Its kind and
- * id are all it is known by, and every other header is read from that file.
- *
- * Globs nobody wrote are left out rather than recorded as nothing.
- */
-declare class CatalogueEntry {
-    /** The agents it is listed for, or `all` where its primitive names none:
-     *  what splits the catalogues in memory; omitted from their JSON files. */
-    readonly agentProviders: "all" | readonly AgentProvider[];
-    readonly kind: string;
-    readonly id: string;
-    readonly description: string;
-    /** Where the body is: a link, under `$CW_OUT/`, to the compiled
-     *  primitive, in what a build writes; the authored file's uri, in what a
-     *  person is listed (FR-140). */
-    readonly file: string;
-    readonly globs?: readonly string[];
-    constructor(catalogueEntry: CatalogueEntry);
-}
-
-/**
- * What an agent has to know before it reads anything else: that this repository
- * is governed by a charter, where the charter's own listing of itself is, and
- * when each kind is to be opened (FR-019).
- *
- * Orientation, and the few rules that are not worth the risk of being missed. A
- * primitive's body is opened when its activation condition is met and not
- * before, which is what the catalogue is for (FR-013) —
- * so a charter of four hundred guides compiles to the same few paragraphs as a
- * charter of four.
- *
- * The activation lines are read off the primitive classes, one per kind, each declaring
- * its own beside the headers it requires, so what a kind is and when it is
- * opened is said in one place (FR-001).
- *
- * It lands in the compiled output, beside the listing it sends a reader to by
- * name. No charter here — it is handed the lines it writes, so what a kind is
- * is asked of the charter once, by the caller.
- *
- * No primitive's body reaches here, not even a guide's: this file is
- * orientation and the listings it sends a reader to. What every turn is to carry
- * is each agent's to carry, in its own kinds.
- */
-declare class CharterMd extends CharterOutputItem {
-    /** This file as a reader opens it: the stamp saying this engine wrote it,
-     *  and the orientation itself. */
-    private readonly stampedDocument;
-    constructor(
-    /** This file as a reader opens it: the stamp saying this engine wrote it,
-     *  and the orientation itself. */
-    stampedDocument: StampedDocument);
-    get text(): string;
-}
-
-/** One asset of a compiled primitive: its path in the primitive's folder,
- *  what it holds, and whether it is run by its path (FR-160, FR-168). */
-declare class CompiledAsset {
-    readonly assetPath: string;
-    readonly contents: Uint8Array;
-    readonly isExecutable: boolean;
-    constructor(assetPath: string, contents: Uint8Array, isExecutable: boolean);
-}
-
-/**
- * One primitive as an agent opens it: the headers its author wrote, and below
- * them the whole of what it says — the bodies of the mixins it pulls in, then its
- * own (FR-139) — with its assets beside it (FR-168).
- *
- * Every layer's primitive compiles to one of these, so what the catalogue sends
- * an agent to is a file in the compiled output for all of them, the engine's own
- * included. The document is handed in whole: reading a primitive into it is the
- * compiler's. Where it and its assets land is the projection's (CORE-FR-221).
- */
-declare class CompiledPrimitive extends CharterOutputItem {
-    /** The kind of the primitive it was compiled from. */
-    readonly kind: string;
-    /** That primitive's id: `team/review`. */
-    readonly id: string;
-    /** What its document holds, stamped with where to change it instead. */
-    private readonly stampedDocument;
-    /** Its assets, laid beside its document: the path each has in its
-     *  folder, what it holds, and whether it is run by its path — the one a
-     *  script says to run (FR-160, FR-168). */
-    readonly assets: readonly CompiledAsset[];
-    constructor(
-    /** The kind of the primitive it was compiled from. */
-    kind: string, 
-    /** That primitive's id: `team/review`. */
-    id: string, 
-    /** What its document holds, stamped with where to change it instead. */
-    stampedDocument: StampedDocument, 
-    /** Its assets, laid beside its document: the path each has in its
-     *  folder, what it holds, and whether it is run by its path — the one a
-     *  script says to run (FR-160, FR-168). */
-    assets?: readonly CompiledAsset[]);
-    /** Its document as an agent opens it: generated, and the charter's alone
-     *  (FR-140). */
-    get text(): string;
-}
-
-/** One tool as an mcp origin lists it: its name, what it does, and what it takes. */
-declare class McpToolDefinition {
-    readonly name: string;
-    readonly description: string;
-    readonly inputSchema: Readonly<Record<string, unknown>>;
-    constructor(name: string, description: string, inputSchema: Readonly<Record<string, unknown>>);
-}
-
-/**
- * One address and `path`, once, however many mcps declare it (FR-145).
- *
- * Where an mcp origin is, how a developer signs in to it, and the tools it listed
- * when the build reached it: which of them each mcp there lets the agent use is
- * its own, and the catalogue already lists every mcp. Keyed by where it is rather than by what it is called, because the
- * repository and an installed charter may call one mcp origin by two names.
- */
-declare class McpOrigin {
-    /** Every mcp at this address and path, sorted. */
-    readonly ids: readonly string[];
-    /** The name each of those ids is served under, its tools as
-     *  `<name>__<tool>`: made once, by the build that wrote the bodies naming
-     *  it, so the server reads it rather than making it again (FR-145). */
-    readonly names: Readonly<Record<string, string>>;
-    readonly address: string;
-    readonly endpoint?: string;
-    readonly command?: {
-        readonly command: string;
-        readonly args: readonly string[];
-        readonly tokenEnv?: string;
-    };
-    readonly path?: string;
-    /** Every way any mcp here lets a developer sign in. */
-    readonly auth: readonly McpAuthMethod[];
-    /** Each tool an mcp here declares, as the mcp origin listed it when the build
-     *  reached it, by name: what the server lists without reaching the mcp origin
-     *  (EVAL-FR-031). None in a list written before it was kept. */
-    readonly tools?: readonly McpToolDefinition[];
-    constructor(mcpOrigin: McpOrigin);
-}
-
-/** Every mcp origin the charter's mcps reach, each once: what `cw run mcp` and
- *  `cw mcp auth` read, since neither reads a charter (FR-145). Ordered by
- *  address, then path (SC-007). */
-declare class McpOrigins extends CharterOutputItem {
-    readonly origins: readonly McpOrigin[];
-    constructor(origins: readonly McpOrigin[]);
-    /** What it holds: generated, and the charter's alone. Indented, since it is
-     *  committed and read in diffs when a mcp origin moves (SC-038). */
-    get text(): string;
-}
-
-/**
- * DRIVEN PORT — what one agent reads of a charter, and where: the files it
- * reads and how each goes over what is there, its own links in them, and
- * what of them it holds in its main context (FR-018, CORE-FR-221). The engine
- * hands it the charter and what the charter compiles to, whose paths are
- * under `$CW_OUT/`, and knows no agent: one is taught to the engine by
- * handing its application one more of these, under the agent's name.
- */
-interface ForManagingLocalAgentOutput {
-    /** The same agent's files, laid onto another checkout of the repository,
-     *  such as a worktree, by the folder the checkout was made in, in this
-     *  adapter's words. */
-    createCheckoutProjection(checkoutFolder: string): ForManagingLocalAgentOutput;
-    /**
-     * What laying this agent's files would do, decided and not yet done
-     * (FR-020, FR-022): each place it would write, with what it would hold and
-     * what it holds now, each place the last build left for it that this one
-     * would take away or write again, and what it could not lay as the charter
-     * says. Reads, and only reads.
-     */
-    createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan>;
-    /** What this agent puts into its main context of the charter, each text as
-     *  it lays it (EVAL-FR-001, EVAL-FR-003). */
-    listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
-    /** How many of this agent's tokens one token of the tokenizer on this
-     *  machine stands for: what an estimate is scaled by (EVAL-SC-002). */
-    readonly tokenFactor: number;
-}
-
-/**
- * The local files a build checks and writes: it lays the compiled output onto a
- * repository, wherever it lays it, and writes every file a build planned: where the output lands is its own to know,
- * never the engine's, which knows an item by its path inside the output, under
- * `$CW_OUT/` (CORE-FR-220, CORE-FR-221). What each agent reads is
- * that agent's projection's, `ForManagingLocalAgentOutput`.
- *
- * What the build laid is read back through the charter's repository,
- * `ForManagingCharter`, never off a path the engine knows (CORE-FR-222).
- */
-interface ForManagingLocalOutput {
-    /** The same output, laid onto another checkout of the repository, such as
-     *  a worktree, by the folder the checkout was made in, in this adapter's
-     *  words. */
-    createCheckoutOutput(checkoutFolder: string): ForManagingLocalOutput;
-    /**
-     * What laying this output would do, decided and not yet done (FR-020,
-     * FR-022): each place it would write, with what it would hold and what it
-     * holds now, and each place the last build left in the output that this one
-     * would take away or write again. Reads, and only reads.
-     */
-    createProjectionPlan(charterOutput: CharterOutput): Promise<ProjectionPlan>;
-    /** That plan carried out, every agent's files in it: what the last build
-     *  left taken away, then this one written (FR-020, FR-021). */
-    writePlan(projectionPlan: ProjectionPlan): Promise<void>;
-}
-
-/**
- * What every agent's projection onto a repository's files does the same way:
- * each of the agent's files planned at its place over what is there now, each
- * stamped file the last build left in the agent's own folders taken away
- * where this one writes it no more, and the paths into the compiled output in
- * each written from where the file lands (FR-018, FR-020, CORE-FR-221). What
- * the files are, where each lands and how it goes over what is there is each
- * agent's own.
- */
-declare abstract class AgentProjection implements ForManagingLocalAgentOutput {
-    protected readonly fileReader: ForReadingFiles;
-    /** The checkout of the repository this agent's files are laid in, such as
-     *  a worktree, by its path from the repository; none for the repository's own. */
-    protected readonly checkoutFolder: string;
-    constructor(fileReader: ForReadingFiles, checkoutFolder?: string);
-    /** The same projection over another checkout: each agent's builds itself,
-     *  and refuses to build a class extending it, which builds itself in turn
-     *  (EVAL-FR-021). */
-    abstract createCheckoutProjection(checkoutFolder: string): ForManagingLocalAgentOutput;
-    abstract readonly tokenFactor: number;
-    /** The folders only this agent's files are in: every stamped file a build
-     *  left there is the build's to take away (FR-020). */
-    protected abstract readonly ownedFolders: readonly string[];
-    /** Every file this agent reads of the charter (FR-018). */
-    protected abstract listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
-    /** Where one of this agent's files lands, from the repository's root. */
-    protected abstract findComponentPlace(component: ProviderComponent): string;
-    abstract listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
-    /** What a file is once this build's part is written over `currentText`,
-     *  what is there now: the charter's part alone, where the file is the
-     *  charter's. */
-    protected mergeComponentContents(_component: ProviderComponent, laidText: string, _currentText: string | undefined, _place: string): string;
-    /** What else the last build left for this agent outside its own folders,
-     *  each with what to write back where it is the repository's too. */
-    protected planOtherCleanup(_checkoutFolder: string): Promise<readonly WritePlan[]>;
-    createAgentProjectionPlan(charter: CharterRoot, charterOutput: CharterOutput): Promise<ProjectionPlan>;
-}
-
-/**
- * DRIVEN ADAPTER: a charter projected onto Claude Code — its rules, skills,
- * subagents, settings and MCP configuration under the folders it reads, and
- * the charter's section of `CLAUDE.md` (FR-018, FR-051, CORE-FR-221).
- *
- * How a file goes over what is there is decided by its kind. A file the
- * charter owns is replaced. The settings and the MCP configuration, which the
- * charter shares with the repository, are merged into: the fields the charter
- * speaks for are its, and every other is left as it was (FR-018). And the
- * entry file, which is the repository's, has the charter's section written in
- * place (FR-051).
- */
-declare class ClaudeProjection extends AgentProjection {
-    readonly tokenFactor = 1.43;
-    protected readonly ownedFolders: string[];
-    /** This projection over a checkout. A class extending it is refused, never
-     *  built as this one: it builds itself over the checkout, by its own
-     *  constructor (EVAL-FR-021). */
-    createCheckoutProjection(checkoutFolder: string): ClaudeProjection;
-    protected listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
-    protected findComponentPlace(component: ProviderComponent): string;
-    protected mergeComponentContents(component: ProviderComponent, laidText: string, currentText: string | undefined): string;
-    listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
-}
-
-/**
- * DRIVEN ADAPTER: a charter projected onto Codex — its skills, subagents,
- * command rules and configuration under the folders it reads, and the
- * charter's section of `AGENTS.md`, at the repository's root and in each
- * folder a guide's globs name (FR-018, FR-051, CORE-FR-221).
- *
- * How a file goes over what is there is decided by its kind. A file the
- * charter owns is replaced; the configuration, which the charter shares with
- * the repository, is merged into, every table the charter does not speak for
- * left as it was (FR-018); and an entry file, which is the repository's, has
- * the charter's section written in place (FR-051).
- */
-declare class CodexProjection extends AgentProjection {
-    readonly tokenFactor = 1;
-    protected readonly ownedFolders: string[];
-    /** This projection over a checkout. A class extending it is refused, never
-     *  built as this one: it builds itself over the checkout, by its own
-     *  constructor (EVAL-FR-021). */
-    createCheckoutProjection(checkoutFolder: string): CodexProjection;
-    protected listComponents(charter: CharterRoot, charterOutput: CharterOutput): readonly ProviderComponent[];
-    protected findComponentPlace(component: ProviderComponent): string;
-    protected mergeComponentContents(component: ProviderComponent, laidText: string, currentText: string | undefined, place: string): string;
-    /** Every nested entry file carrying the stamp, each with the text that is
-     *  the repository's own where some is: a stamped section does not make the
-     *  text around it the build's (FR-020). Only folders are walked, not every
-     *  file of the repository read. */
-    protected planOtherCleanup(checkoutFolder: string): Promise<readonly WritePlan[]>;
-    listMainContextTexts(charter: CharterRoot, charterOutput: CharterOutput): readonly MainContextText[];
-}
-
-/**
- * Keeps a charter as files, all of it through the one port (CORE-FR-228),
- * under `.cw/charter/` (CORE-FR-224, VENDOR-FR-009): one folder per
- * charter, `<charter>/`, holding its primitives, `primitive/<kind>/<id>/`, each index.md
- * and its assets; its test cases under `test/` and its eval cases under
- * `eval/`, a JSON file each; and, where it was installed, its
- * `cw-package.json` (VENDOR-FR-010). A source is read as cw lays one out: its
- * charters as a repository keeps its own (VENDOR-FR-017).
- *
- * A repository laid out the old way — its kinds right under `.cw/charter/` or
- * `.cw/charter/primitive/`, its tests, eval cases and installed charters right under
- * `.cw/` or `.cw/charter/` — is refused by every operation, and so is a source
- * laid out that way, naming the skill that moves it (CORE-FR-226,
- * VENDOR-FR-011).
- */
-declare class FileCharterRepository implements ForManagingCharter {
-    #private;
-    constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, sourceFetcher: ForFetchingCharterSources);
-    loadCharter(): Promise<readonly RawPrimitive[]>;
-    loadCharterMetadata(): Promise<readonly RawCharterMetadata[]>;
-    createCharter(): Promise<void>;
-    addPrimitive(primitive: Primitive): Promise<string>;
-    assertLayout(): Promise<void>;
-    describeCharterPlace(): string;
-    findCharterUri(): string;
-    rewritePrimitive(primitive: Primitive): Promise<void>;
-    removePrimitive(primitive: Primitive): Promise<void>;
-    fetchCharterSources(charterSourceOrigin: CharterSourceOrigin, version?: string): Promise<readonly CharterSource[]>;
-    removeFetchedSources(charterSources: readonly CharterSource[]): Promise<void>;
-    storeCharters(charterInstalls: readonly CharterInstall[]): Promise<void>;
-    findCharterFolderUri(charterName: string): string;
-    addCharter(charterName: string): Promise<void>;
-    removeCharter(charterName: string): Promise<void>;
-    loadTestSuites(): Promise<readonly RawTestSuite[]>;
-    writeTestSuite(charterName: string, name: string, testSuite: TestSuite): Promise<void>;
-    removeTestSuite(charterName: string, name: string): Promise<void>;
-    loadEvalSuites(): Promise<readonly RawEvalSuite[]>;
-    writeEvalSuite(charterName: string, name: string, evalSuite: EvalSuite): Promise<void>;
-    removeEvalSuite(charterName: string, name: string): Promise<void>;
-    readCompiledOutputItem(itemPath: string): Promise<string | undefined>;
-    describeItemPlace(itemPath: string): string;
-    resolveOutputLinks(laidText: string): string;
-}
-
-/**
- * DRIVEN ADAPTER: git, as the command everyone already has.
- *
- * Each fetch lands in a store of its own, a temporary bare repository, so the
- * folder installed into need not be a repository and its own object store and
- * index are never touched, if it is one. That store's folder is the commit this
- * adapter answers: it holds the one commit fetched, under `FETCH_HEAD`. The
- * fetch still reads the repository's own git config, where the folder is in one,
- * so a source is reached as `git fetch` run there would reach it (CORE-FR-205).
- * Handing it over takes git 2.31 or later.
- */
-declare class GitSources implements ForFetchingCharterSources {
-    #private;
-    constructor(
-    /** The repository this works in, every path it is handed from its root:
-     *  refused here unless it names a folder (SDK-FR-010). */
-    repoFolder: URL);
-    /** `git init --bare` first, as nothing else needs a folder: a refusal with
-     *  no such command is a machine without git, not a source out of reach. */
-    fetchCommit(source: string, version?: string): Promise<string>;
-    /** `git rev-parse FETCH_HEAD`. */
-    findCommitId(commit: string): Promise<string>;
-    /** `git ls-tree -r`, the paths split on the NUL `-z` ends each with, so a
-     *  path holding a newline or a quote is read as it is. */
-    listFilesAt(commit: string): Promise<readonly string[]>;
-    /** `git show FETCH_HEAD:<path>`. */
-    readFileAt(commit: string, path: string): Promise<string>;
-    /** `git cat-file blob FETCH_HEAD:<path>`, its output taken as bytes: the
-     *  blob as it was committed, with no textconv a user's own git config sets
-     *  (CORE-FR-207). */
-    readBytesAt(commit: string, path: string): Promise<Uint8Array>;
-    /** `git read-tree --prefix` into an index of the store's, and `checkout-index`
-     *  into a work tree of the store's, then a copy beside the folder, swapped with
-     *  it once whole, the folder put back if the swap fails. The
-     *  repository's own index, and what is staged in it, is never read from or
-     *  written to. */
-    checkOutFolder(commit: string, fromFolder: string, intoSubFolder: string): Promise<void>;
-    /** A store left behind is only a temporary folder, and never worth reporting
-     *  a source that landed as one that failed. */
-    removeFetchedCommit(commit: string): Promise<void>;
-}
-
-/**
- * DRIVEN ADAPTER: each mcp origin's credential kept as one JSON secret under
- * its address, in the operating system's own credential store, reached by
- * the command each system ships — `security` on macOS, `secret-tool` on Linux
- * (FR-149).
- *
- * The secret goes in on standard input, so it never shows in a process
- * listing. `security add-generic-password` takes a password only as an
- * argument, so on macOS the whole command is written to `security -i`, the
- * secret as hex through `-X`. What a command prints while writing is never
- * repeated in a fault: it could echo what it was given.
- *
- * Any other platform refuses every call, naming the two it supports.
- */
-declare class KeychainCredentialsRepository implements ForStoringCredentials {
-    private readonly platform;
-    /** Which system's store to use: this process's, unless a test names
-     *  another. Named as `process.platform` names it, and typed as a plain
-     *  string so a tool importing it type-checks without Node's own types. */
-    constructor(platform?: string);
-    readCredential(address: string): Promise<McpCredential | undefined>;
-    writeCredential(credential: McpCredential): Promise<void>;
-    /** macOS and Linux have a store this knows; anything else is refused
-     *  before a command runs. */
-    private refuseUnsupportedPlatform;
-    private throwFault;
-}
-
-/**
- * DRIVEN ADAPTER: the compiled output laid onto the repository as files, under
- * `.cw/out/`, which nothing else writes, each item as the build compiled it
- * (CORE-FR-221); and every file a build planned, each agent's own among them,
- * written.
- */
-declare class LocalRepoManipulator implements ForManagingLocalOutput {
-    #private;
-    constructor(fileReader: ForReadingFiles, fileWriter: ForWritingFiles, checkoutFolder?: string);
-    /** The same output over another checkout. A class extending this one is
-     *  refused, never built as this one: it builds itself over the checkout, by
-     *  its own constructor (EVAL-FR-021). */
-    createCheckoutOutput(checkoutFolder: string): LocalRepoManipulator;
-    createProjectionPlan(charterOutput: CharterOutput): Promise<ProjectionPlan>;
-    writePlan(projectionPlan: ProjectionPlan): Promise<void>;
-}
-
-/**
- * DRIVEN ADAPTER: OAuth against one MCP server, over the SDK's own client —
- * discovery, dynamic registration, PKCE and renewal are its (plan §19.5).
- *
- * A sign-in listens on `127.0.0.1` at a port the system picks, for the one
- * request the browser comes back with, and closes. The address to open is
- * handed to the caller, never opened here (plan §15). Nothing is kept here:
- * the grant goes back to the caller, and the credential store is its business.
- */
-declare class OAuth implements ForAuthorizingOAuthClients {
-    #private;
-    constructor(callbackTimeoutMs?: number);
-    authorizeInBrowser(endpoint: string, showAuthorizationUrl: (authorizationUrl: string) => void): Promise<OAuthGrant>;
-    renewGrant(endpoint: string, oauthGrant: OAuthGrant): Promise<OAuthGrant | undefined>;
-}
-
-/**
- * DRIVEN ADAPTER: js-tiktoken, a tokenizer that runs offline, with
- * `o200k_base`. Not the tokenizer of the model an agent runs on, which is not
- * published; near enough to stand in for it, and said to be an estimate
- * wherever it is used (EVAL-FR-002).
- *
- * The encoding is loaded the first time a text is counted, not when this is
- * made: a command that counts nothing pays nothing for it.
- */
-declare class Tiktoken implements ForCountingTokens {
-    #private;
-    countTokens(text: string): number;
 }

@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { FolderAddress, type FolderURL, resolveFileUrl } from "../../shared/module.js";
+import { resolveFileUrl } from "../../shared/infra.js";
+import { FolderAddress, type FolderURL } from "../../shared/module.js";
 import type { ForRunningShellCommands, ShellCommandResult } from "../app/port/out/running-shell-commands.port.js";
 
 /** DRIVEN ADAPTER: the system shell, as an agent runs a hook's command. */

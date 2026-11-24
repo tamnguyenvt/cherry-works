@@ -7,9 +7,20 @@
  * store `cw` keeps the charter in and of the output, each one value
  * (CORE-FR-215) — no constant or helper beside them.
  */
+
+export {
+  AgentProjection,
+  ClaudeProjection,
+  CodexProjection,
+  FileCharterRepository,
+  GitSources,
+  KeychainCredentialsRepository,
+  LocalRepoManipulator,
+  OAuth,
+  Tiktoken,
+} from "./module/charter/infra.js";
 export {
   AgentPrimitive,
-  AgentProjection,
   AgentProvider,
   type AgentProviderName,
   AssetFile,
@@ -25,14 +36,11 @@ export {
   type CharterRoot,
   CharterSource,
   CharterSourceOrigin,
-  ClaudeProjection,
-  CodexProjection,
   type CompiledPrimitive,
   CopyPlan,
   charterPath,
   DocumentBasedComponent,
   EvalSuite,
-  FileCharterRepository,
   type ForAuthoringCharter,
   type ForAuthorizingOAuthClients,
   type ForBuildingCharter,
@@ -42,11 +50,8 @@ export {
   type ForManagingLocalAgentOutput,
   type ForManagingLocalOutput,
   type ForStoringCredentials,
-  GitSources,
   GuidePrimitive,
   InstalledCharterRecord,
-  KeychainCredentialsRepository,
-  LocalRepoManipulator,
   type MainContextText,
   McpAuthMethod,
   type McpAuthMethodName,
@@ -55,7 +60,6 @@ export {
   type McpOriginAddress,
   McpOrigins,
   McpPrimitive,
-  OAuth,
   type OAuthClientRegistration,
   type OAuthGrant,
   OutputPath,
@@ -76,7 +80,6 @@ export {
   SkillPrimitive,
   StampedDocument,
   TestSuite,
-  Tiktoken,
   type UnparsedHeaders,
   WritePlan,
 } from "./module/charter/module.js";
@@ -88,10 +91,15 @@ export {
 } from "./module/composition.js";
 export {
   AgentCli,
-  type Answer,
   ClaudeCli,
   CodexCli,
   FileSessionAnalysisRepository,
+  GitWorktrees,
+  Promptfoo,
+  Shell,
+} from "./module/runtime/infra.js";
+export {
+  type Answer,
   type ForCheckingAgentCli,
   type ForKeepingWorktrees,
   type ForLoadingSessionAnalysis,
@@ -99,8 +107,6 @@ export {
   type ForRunningCharter,
   type ForRunningPromptfoo,
   type ForRunningShellCommands,
-  GitWorktrees,
-  Promptfoo,
   type PromptfooAssertion,
   type PromptfooLog,
   type PromptfooTest,
@@ -108,32 +114,33 @@ export {
   type PromptUsage,
   RuntimeDTOs,
   SessionLogs,
-  Shell,
   type ShellCommandResult,
 } from "./module/runtime/module.js";
 export {
-  AdapterFault,
   ConsoleReporter,
-  FaultDTOs,
   FileOutput,
   FileReaders,
+  McpClients,
+  SystemClock,
+} from "./module/shared/infra.js";
+export {
+  AdapterFault,
+  FaultDTOs,
   type ForCallingMcpServers,
   type ForReadingFiles,
   type ForReportingProgress,
   type ForTellingTime,
   type ForWritingFiles,
   type ListedFile,
-  McpClients,
   type McpServerAddress,
   type McpServerConnection,
   type ReadFile,
-  SystemClock,
   type ToolAnswer,
   UnauthorizedMcpFault,
   type UpstreamTool,
 } from "./module/shared/module.js";
+export { FileWorkspaceSettingsRepository } from "./module/workspace/infra.js";
 export {
-  FileWorkspaceSettingsRepository,
   type ForManagingWorkspace,
   type ForStoringWorkspaceSettings,
   RawWorkspaceSettings,

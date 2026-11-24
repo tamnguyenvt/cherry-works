@@ -8,7 +8,8 @@ import { promisify } from "node:util";
 // Types only, off the promptfoo this pins: what is written to it and read
 // back is held to its own shapes, and nothing of it is bundled.
 import type { OutputFile, UnifiedConfig } from "promptfoo";
-import { FolderAddress, type FolderURL, resolveFileUrl, z } from "#module/shared/module.js";
+import { resolveFileUrl } from "#module/shared/infra.js";
+import { FolderAddress, type FolderURL, z } from "#module/shared/module.js";
 import {
   AdapterFault,
   FailedEvaluationCaseFault,

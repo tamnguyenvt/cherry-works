@@ -1,4 +1,4 @@
-import { decodeContents, encodeContents, type InMemoryFileReaders, resolveFileUrl } from "../../../shared/module.js";
+import { decodeContents, encodeContents, type InMemoryFileReaders, resolveFileUrl } from "../../../shared/infra.js";
 import {
   type ForFetchingCharterSources,
   MissingGitFault,

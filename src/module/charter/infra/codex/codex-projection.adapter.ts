@@ -1,4 +1,4 @@
-import { resolveCheckoutPath } from "#module/shared/module.js";
+import { resolveCheckoutPath } from "#module/shared/infra.js";
 import {
   type CharterOutput,
   type CharterRoot,

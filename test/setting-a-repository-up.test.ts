@@ -11,7 +11,8 @@ import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memor
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { FileWorkspaceSettingsRepository, ManagingWorkspace } from "../src/module/workspace/module.js";
+import { FileWorkspaceSettingsRepository } from "../src/module/workspace/infra.js";
+import { ManagingWorkspace } from "../src/module/workspace/module.js";
 import { Commander } from "../src/presentation/cli/cli.commander.js";
 import { EXIT_FAILURE } from "../src/presentation/cli/commands/command.interface.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";

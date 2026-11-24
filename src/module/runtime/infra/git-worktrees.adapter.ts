@@ -2,7 +2,8 @@ import { execFile } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { FolderAddress, type FolderURL, resolveFileUrl } from "#module/shared/module.js";
+import { resolveFileUrl } from "#module/shared/infra.js";
+import { FolderAddress, type FolderURL } from "#module/shared/module.js";
 import {
   type ForKeepingWorktrees,
   logPath,

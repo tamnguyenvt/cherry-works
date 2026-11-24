@@ -47,7 +47,8 @@ import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory
 import { SystemClock } from "../src/module/shared/infra/system-clock.adapter.js";
 import type { ForManagingWorkspace } from "../src/module/workspace/app/port/in/managing-workspace.port.js";
 import type { WorkspaceDTOs } from "../src/module/workspace/app/port/in/workspace.dto.js";
-import { FileWorkspaceSettingsRepository, ManagingWorkspace } from "../src/module/workspace/module.js";
+import { FileWorkspaceSettingsRepository } from "../src/module/workspace/infra.js";
+import { ManagingWorkspace } from "../src/module/workspace/module.js";
 import type {
   CommandLine,
   Context,

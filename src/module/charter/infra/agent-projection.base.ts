@@ -1,4 +1,5 @@
-import { type ForReadingFiles, resolveCheckoutPath, resolveRepoPath } from "#module/shared/module.js";
+import { resolveCheckoutPath, resolveRepoPath } from "#module/shared/infra.js";
+import type { ForReadingFiles } from "#module/shared/module.js";
 import {
   type CharterOutput,
   type CharterRoot,

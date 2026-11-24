@@ -1,8 +1,8 @@
 /**
  * MODULE — the charter: authoring and projecting it.
  *
- * Everything it lets the code outside it reach, and the only file the code
- * outside it imports (`.dependency-cruiser.cjs`).
+ * Everything of its engine it lets the code outside it reach; its adapters
+ * are reached through `infra.ts` (`.dependency-cruiser.cjs`).
  */
 export { AuthoringCharter } from "./app/authoring-charter.use-case.js";
 export { BuildingCharter } from "./app/building-charter.use-case.js";
@@ -85,13 +85,3 @@ export { PrimitiveLayer } from "./domain/models/primitive/primitive-layer.value-
 export { RawPrimitive } from "./domain/models/primitive/raw-primitive.js";
 export { RawTestSuite } from "./domain/models/test/raw-test-suite.js";
 export { TestSuite } from "./domain/models/test/test-suite.js";
-export { AgentProjection } from "./infra/agent-projection.base.js";
-export { ClaudeProjection } from "./infra/claude/claude-projection.adapter.js";
-export { CodexProjection } from "./infra/codex/codex-projection.adapter.js";
-export { FileCharterRepository } from "./infra/file-charter.repository.js";
-export { GitSources } from "./infra/git-sources.adapter.js";
-export { resolveLaidText } from "./infra/helper.js";
-export { KeychainCredentialsRepository } from "./infra/keychain-credentials.repository.js";
-export { LocalRepoManipulator } from "./infra/local-repo-manipulator.adapter.js";
-export { OAuth } from "./infra/oauth.adapter.js";
-export { Tiktoken } from "./infra/tiktoken.adapter.js";

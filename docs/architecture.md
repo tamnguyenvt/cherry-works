@@ -12,7 +12,7 @@ here and extend what is already there. Every file is named
 `<kebab-subject>.<role>.ts` as the guide `hexagonal-naming` says (`file-charter.repository.ts`);
 only the models under a module's `domain/` (`charter-root.ts`), those an
 agent's adapters keep of its own (`charter/infra/claude/claude-rule.ts`),
-`helper.ts`, `index.ts`, a module's `module.ts` and its `domain/constants.ts`,
+`helper.ts`, `index.ts`, a module's `module.ts`, `infra.ts` and its `domain/constants.ts`,
 the kernel's `domain/schema.ts` (the schemas every module shares), the
 composition root's `composition.ts` and `main.ts` keep their bare names; a value object takes `.value-object`
 (`primitive-layer.value-object.ts`).
@@ -25,9 +25,11 @@ composition root's `composition.ts` and `main.ts` keep their bare names; a value
   runtime's applications it composes, CORE-FR-231), `portal/`
   (`portal.routes.ts`, `portal.server.ts`, `page/`), `mcp/mcp.server.ts`. A
   driver, the composition root and every other module reach a module only
-  through its `module.ts`, which exports what the module lets them reach —
-  its applications, ports, DTOs, the models its ports carry, and its
-  adapters; the page takes types alone from it. Tests may reach further in.
+  through its `module.ts`, which exports what the module lets them reach of
+  its engine — its applications, ports, DTOs, the models its ports carry —
+  and its `infra.ts`, which exports its adapters; nothing of `app/` or
+  `domain/` imports an `infra.ts`, so the engine bundles without `node:*`.
+  The page takes types alone from `module.ts`. Tests may reach further in.
 - `module/` decides: `charter/` and `runtime/`, `workspace/` — what a
   repository configured itself with, `ManagingWorkspace`, answering
   `ForManagingWorkspace`, keeping it in
@@ -145,7 +147,7 @@ composition root's `composition.ts` and `main.ts` keep their bare names; a value
   `charterPath` and `outputPath`, with their models `CharterPath` and
   `OutputPath`; the port of every adapter, with the models and values crossing
   it; and `cw`'s own adapters and their abstract bases, for a tool to extend.
-  No use case or service. It reaches a module only through its `module.ts`, as `main.ts`
+  No use case or service. It reaches a module only through its `module.ts` and `infra.ts`, as `main.ts`
   does; what it exports is the contract a release compares.
 
 ## Inside `module/`
@@ -174,7 +176,7 @@ charter's two applications, in DTOs, and holds no model of the charter's
   `app/application-service.base.ts`, `dto()` and the faults' DTOs, `FaultDTOs`,
   in `app/port/in/`, with `index.ts` beside them, the kernel's DTO entry:
   what every DTO file is written with and imports, and nothing else, never
-  `shared/module.ts`, which reaches its adapters (`dtos-are-zod-only`); and
+  `shared/module.ts`, which reaches its applications (`dtos-are-zod-only`); and
   the ports both use (`ForReadingFiles`,
   `ForWritingFiles`, `ForReportingProgress`,
   `ForTellingTime`, `ForCallingMcpServers`, `FolderAddress`).

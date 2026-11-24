@@ -1,4 +1,4 @@
-import { type InMemoryFileReaders, resolveFileUrl } from "../../../shared/module.js";
+import { type InMemoryFileReaders, resolveFileUrl } from "../../../shared/infra.js";
 import { type ForKeepingWorktrees, logPath, RefusedWorktreeFault } from "../../app/port/out/keeping-worktrees.port.js";
 
 /** What follows the worktrees' folder in a worktree's path: named folders,

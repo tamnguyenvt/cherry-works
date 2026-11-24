@@ -11,7 +11,7 @@ import { InMemoryAgentCli } from "../src/module/runtime/infra/in-memory/in-memor
 import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memory-file-output.adapter.js";
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import { StderrReporter } from "../src/module/shared/module.js";
+import { StderrReporter } from "../src/module/shared/infra.js";
 import { Commander } from "../src/presentation/cli/cli.commander.js";
 import {
   type AnyCommand,

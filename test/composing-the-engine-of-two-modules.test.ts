@@ -18,7 +18,7 @@ import { InMemoryOAuthAuthorizer } from "../src/module/charter/infra/in-memory/i
 import { InMemorySources } from "../src/module/charter/infra/in-memory/in-memory-sources.adapter.js";
 import { InMemoryTokenCounter } from "../src/module/charter/infra/in-memory/in-memory-token-counter.adapter.js";
 import { LocalRepoManipulator } from "../src/module/charter/infra/local-repo-manipulator.adapter.js";
-import * as charterModule from "../src/module/charter/module.js";
+import * as charterInfra from "../src/module/charter/infra.js";
 import {
   type ComposedApplications,
   composeApplications,
@@ -33,7 +33,7 @@ import { InMemoryPromptfoo } from "../src/module/runtime/infra/in-memory/in-memo
 import { InMemoryShellCommands } from "../src/module/runtime/infra/in-memory/in-memory-shell-commands.adapter.js";
 import { InMemoryWorktrees } from "../src/module/runtime/infra/in-memory/in-memory-worktrees.adapter.js";
 import { Promptfoo } from "../src/module/runtime/infra/promptfoo.adapter.js";
-import * as runtimeModule from "../src/module/runtime/module.js";
+import * as runtimeInfra from "../src/module/runtime/infra.js";
 import { FaultDTOs } from "../src/module/shared/app/port/in/fault.dto.js";
 import { FileReaders } from "../src/module/shared/infra/file-readers.adapter.js";
 import { InMemoryClock } from "../src/module/shared/infra/in-memory/in-memory-clock.adapter.js";
@@ -41,9 +41,9 @@ import { InMemoryFileOutput } from "../src/module/shared/infra/in-memory/in-memo
 import { InMemoryFileReaders } from "../src/module/shared/infra/in-memory/in-memory-file-readers.adapter.js";
 import { InMemoryMcpServers } from "../src/module/shared/infra/in-memory/in-memory-mcp-servers.adapter.js";
 import { InMemoryReporter } from "../src/module/shared/infra/in-memory/in-memory-reporter.adapter.js";
-import * as sharedModule from "../src/module/shared/module.js";
+import * as sharedInfra from "../src/module/shared/infra.js";
 import { FileWorkspaceSettingsRepository } from "../src/module/workspace/infra/file-workspace-settings.repository.js";
-import * as workspaceModule from "../src/module/workspace/module.js";
+import * as workspaceInfra from "../src/module/workspace/infra.js";
 import { Commander } from "../src/presentation/cli/cli.commander.js";
 import { type CommandLine, EXIT_FAILURE, EXIT_OK } from "../src/presentation/cli/commands/command.interface.js";
 import { COMMANDS } from "../src/presentation/cli/commands/index.js";
@@ -463,7 +463,7 @@ test("the published package composes the engine of its two parts, which hold no 
   );
   assert.ok(exportedPaths.length > 0);
   for (const exportedPath of exportedPaths)
-    assert.match(exportedPath, /^module\/(?:(?:charter|runtime|shared|workspace)\/module|composition)\.js$/);
+    assert.match(exportedPath, /^module\/(?:(?:charter|runtime|shared|workspace)\/(?:module|infra)|composition)\.js$/);
   // No use case is exported, nor how the engine is put together inside: a
   // tool composes it through composeApplications alone (CORE-FR-228, SDK-FR-020).
   for (const internalName of [
@@ -502,10 +502,10 @@ test("the published package composes the engine of its two parts, which hold no 
       ),
   );
   const ownAdapterClassByName: Readonly<Record<string, abstract new (...constructorArguments: never[]) => object>> = {
-    ...charterModule,
-    ...runtimeModule,
-    ...sharedModule,
-    ...workspaceModule,
+    ...charterInfra,
+    ...runtimeInfra,
+    ...sharedInfra,
+    ...workspaceInfra,
   } as never;
   const handedAdapterKeys = Object.keys(pluginsInMemory(adaptersInMemory(filesInThreeParts))).sort();
   assert.deepEqual(Object.keys(OWN_ADAPTER_CLASS_NAMES_BY_KEY).sort(), handedAdapterKeys);
