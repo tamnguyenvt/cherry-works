@@ -1,6 +1,6 @@
 {
   "name": "cherry-works",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "The charter engine: resolves a charter and compiles it into what a coding agent reads.",
   "keywords": [
     "claude-code",
