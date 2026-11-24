@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.4.2 — 2026-11-24
+
+- No change for users: `cw` and the library work as they did in 1.4.1.
+
 ## 1.4.1 — 2026-11-22
 
 - **Breaking:** primitives, tests and evals live in charters you name under `.cw/charter/<charter>/` (a 1.3.0 layout is refused: follow `/cw-author` to move it); `cw add`, `cw list`, `cw suite`, `cw test`, `cw eval` and the portal take `--charter=<name>`, and `--skill` is gone.
