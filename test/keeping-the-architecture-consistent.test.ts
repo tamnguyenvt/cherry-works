@@ -41,7 +41,9 @@ const primitivesFolderUrl = new URL(".cw/charter/", repositoryUrl);
  *  clone holds none, and the tests reading its guides are skipped there. */
 const isCharterHere = existsSync(primitivesFolderUrl);
 const primitiveFilePaths = isCharterHere ? readdirSync(primitivesFolderUrl, { recursive: true, encoding: "utf8" }) : [];
-const architectureGuideIds = ["architecture-map", "hexagonal-architecture", "hexagonal-naming"];
+const architectureGuideIds = ["hexagonal-architecture", "hexagonal-naming"];
+/** The architecture overview, which maps where each part of the engine lives. */
+const architectureOverviewText = readFileSync(new URL("docs/architecture.md", repositoryUrl), "utf8");
 
 /** The verbs a service or one of its functions may start with. */
 const serviceVerbs = [
@@ -275,14 +277,14 @@ test("no service, of the hexagon or of the domain, exports a bare verb (CORE Sto
   assert.deepEqual(bareVerbExports, []);
 });
 
-test("the architecture guides name the use cases, repositories and services the code holds, and no other (CORE Story 42 scenario 1)", {
-  skip: !isCharterHere && "this repository's charter is kept on this machine alone, out of git",
-}, () => {
-  const architectureMapText = guideTextById.get("architecture-map")!;
+test("the architecture overview and guides name the use cases, repositories and services the code holds, and no other (CORE Story 42 scenario 1)", () => {
   for (const componentName of [...useCaseNames, ...repositoryNames, ...serviceNames]) {
-    assert.ok(architectureMapText.includes(`\`${componentName}\``), `architecture-map does not name ${componentName}`);
+    assert.ok(
+      architectureOverviewText.includes(`\`${componentName}\``),
+      `docs/architecture.md does not name ${componentName}`,
+    );
   }
-  for (const [guideId, guideText] of guideTextById) {
+  for (const [guideId, guideText] of [...guideTextById, ["docs/architecture.md", architectureOverviewText] as const]) {
     // A service's one instance is its name in camelCase; any other such name is a module of functions.
     const lowerServiceNames = [...guideText.matchAll(/`([a-z]\w*(?:Repo|Service))`/g)].map(
       (serviceMatch) => serviceMatch[1]!,
@@ -304,12 +306,10 @@ test("the architecture guides name the use cases, repositories and services the 
   }
 });
 
-test("the architecture map names every operation of every driven port beside its port, the workspace's included (CORE Story 42 scenario 1)", {
-  skip: !isCharterHere && "this repository's charter is kept on this machine alone, out of git",
-}, () => {
-  // One item of the map's lists, with the lines it wraps onto: a port and its
-  // operations are named in one.
-  const architectureMapItems = guideTextById.get("architecture-map")!.split(/\n(?=\s*- )/);
+test("the architecture overview names every operation of every driven port beside its port, the workspace's included (CORE Story 42 scenario 1)", () => {
+  // One item of the overview's lists, with the lines it wraps onto: a port and
+  // its operations are named in one.
+  const architectureMapItems = architectureOverviewText.split(/\n(?=\s*- )/);
   const moduleFolderUrl = new URL("src/module/", repositoryUrl);
   const drivenPortFileUrls = readdirSync(moduleFolderUrl, { withFileTypes: true })
     .filter((moduleEntry) => moduleEntry.isDirectory())
@@ -337,7 +337,7 @@ test("the architecture map names every operation of every driven port beside its
   assert.deepEqual(
     unnamedOperations,
     [],
-    "architecture-map does not name these driven-port operations beside their port",
+    "docs/architecture.md does not name these driven-port operations beside their port",
   );
 });
 

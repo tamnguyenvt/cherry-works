@@ -553,20 +553,22 @@ const roleWords = new Set(["For", "Loading", "Repository", "Service", "Factory"]
 
 /** The guides this repository authored that say what the engine's parts are
  *  named and where they live; the installed ones name no part of it. */
-const architectureGuideIds = [
-  "architecture-map",
-  "hexagonal-architecture",
-  "hexagonal-naming",
-  "driven-port-speaks-its-adapter",
-];
+const architectureGuideIds = ["hexagonal-architecture", "hexagonal-naming", "driven-port-speaks-its-adapter"];
+/** The architecture overview, which maps where each part of the engine lives. */
+const architectureOverviewUrl = new URL("docs/architecture.md", repositoryUrl);
 
-test("the naming and architecture guides name no type or operation the code does not hold (CORE Story 53 scenario 2)", {
-  skip: !isCharterHere && "this repository's charter is kept on this machine alone, out of git",
-}, () => {
+test("the naming and architecture guides and the architecture overview name no type or operation the code does not hold (CORE Story 53 scenario 2)", () => {
   const sourceText = [...sourceFileByPath.values()].map((sourceFile) => sourceFile.text).join("\n");
   const sourceWords = new Set(sourceText.match(/#?\w+/g));
-  const unheldNames = architectureGuideIds.flatMap((guideId) => {
-    const guideText = readFileSync(new URL(`${guideId}/index.md`, guideFolderUrl), "utf8");
+  const architectureTextUrlById = new Map<string, URL>([
+    ...(isCharterHere ? architectureGuideIds : []).map((guideId): [string, URL] => [
+      guideId,
+      new URL(`${guideId}/index.md`, guideFolderUrl),
+    ]),
+    ["docs/architecture.md", architectureOverviewUrl],
+  ]);
+  const unheldNames = [...architectureTextUrlById].flatMap(([guideId, guideTextUrl]) => {
+    const guideText = readFileSync(guideTextUrl, "utf8");
     return [...guideText.matchAll(/`([^`\n]+)`/g)].flatMap((codeSpanMatch) =>
       // A code span is a name where it is one identifier, called or not:
       // a type (`ForManagingCharter`), an operation (`loadCharter()`), a
